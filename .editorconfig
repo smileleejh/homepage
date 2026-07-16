@@ -1,0 +1,25 @@
+# 루트 EditorConfig — .claude/rules/code-style.md 규칙을 언어별로 명시한다.
+# 결정: 들여쓰기 2칸은 전체 적용, 네이밍은 각 언어 관례 유지(C# 타입/메서드/상수는 PascalCase).
+root = true
+
+# 공통: 스페이스 2칸 들여쓰기, UTF-8, 끝 공백 제거, 마지막 개행
+[*]
+indent_style = space
+indent_size = 2
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# 마크다운: 줄 끝 공백이 강제 줄바꿈 의미 → 유지
+[*.md]
+trim_trailing_whitespace = false
+
+# C#: 들여쓰기 2칸(룰 적용). 중괄호는 새 줄(C# 관례) 유지, 네이밍은 PascalCase 유지.
+[*.cs]
+indent_size = 2
+csharp_new_line_before_open_brace = all
+dotnet_sort_system_directives_first = true
+
+# 프론트엔드(TS/JS/JSON/CSS): 2칸
+[*.{ts,tsx,js,jsx,mjs,cjs,json,css}]
+indent_size = 2
