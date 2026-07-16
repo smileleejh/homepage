@@ -1,0 +1,7 @@
+{
+  "//": "이 파일을 appsettings.Local.json 으로 복사한 뒤 실제 값을 채운다. appsettings.Local.json 은 .gitignore 로 커밋되지 않는다. 운영 환경에서는 파일 대신 환경변수/시크릿 매니저 사용 권장.",
+  "Seed": {
+    "AdminEmail": "admin@회사도메인.com",
+    "AdminPassword": "정책만족-강한비밀번호(8자이상 + 대문자 + 소문자 + 숫자 + 특수문자)"
+  }
+}

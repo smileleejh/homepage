@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
-// P-08 회원가입 — 현재는 Identity 기본 register(email/password)에 연결.
-// TODO(M1): 이름·부서 저장 + 회사 이메일 도메인 화이트리스트 검증을 위한 커스텀 엔드포인트로 교체. (F-AUTH-01)
+// P-08 회원가입 — 커스텀 /api/auth/signup 에 연결(도메인 화이트리스트 + 이름/부서 저장). (F-AUTH-01)
 export default function RegisterPage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,12 +14,14 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
     const form = new FormData(e.currentTarget);
-    const res = await fetch("/api/auth/register", {
+    const res = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: form.get("email"),
         password: form.get("password"),
+        name: form.get("name"),
+        department: form.get("department"),
       }),
     });
     setLoading(false);

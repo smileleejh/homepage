@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 프로젝트 현황
 
 - **스캐폴딩 완료** — 백엔드/프론트 모두 빌드 통과. 초기 EF 마이그레이션(InitialCreate) 생성됨.
-- **실행 검증(실DB 연동)은 미완** — DB는 **Supabase(관리형 PostgreSQL)** 로 확정. 연결 문자열을 user-secrets로 주입해야 마이그레이션 적용·구동 가능.
+- **Supabase 연동·마이그레이션 적용·API 레벨 실행 검증 완료** (문의 저장 / 회원가입 / 역할 인가 확인). DB는 **Supabase(관리형 PostgreSQL)**, 연결 문자열은 user-secrets `ConnectionStrings:Default`. 남은 검증: 브라우저 BFF 로그인 플로우, 관리자 시드(`Seed:Admin*`) 후 로그인.
 - 문서: `docs/PRD.md`(요구사항 **source of truth**), `docs/DESIGN.md`(설계서), 이 파일.
 
 ## 무엇을 만드는가

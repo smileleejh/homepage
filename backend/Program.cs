@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 로컬 전용 설정(관리자 시드 등) — 커밋되지 않는 파일. 있으면 로드해 appsettings 값을 덮어쓴다.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // OpenAPI 문서(개발용)
 builder.Services.AddOpenApi();
 
@@ -61,6 +64,9 @@ app.UseAuthorization();
 
 // Identity API 엔드포인트 → /api/auth/{register, login, refresh, confirmEmail, resetPassword, ...}
 app.MapGroup("/api/auth").MapIdentityApi<ApplicationUser>();
+
+// 커스텀 회원가입(도메인 화이트리스트 + 이름/부서) — F-AUTH-01
+app.MapAuthEndpoints();
 
 // 커스텀: 로그아웃 (Identity 기본 미제공)
 app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
