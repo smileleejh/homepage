@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BOARD_CATEGORIES } from "@/lib/board";
-import { requestLogout } from "@/lib/auth";
+import { requestLogout, useIsAdmin } from "@/lib/auth";
 import { useCategoryCounts } from "./useCategoryCounts";
 
 // 직원 영역 상단 내비 — 게시판 하위 카테고리 드롭다운 + 로그아웃 + 모바일 햄버거
@@ -15,6 +15,7 @@ export default function BoardHeader() {
   const [loggingOut, setLoggingOut] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const counts = useCategoryCounts();
+  const isAdmin = useIsAdmin();
 
   // 바깥 클릭 / ESC 로 드롭다운·모바일 메뉴 닫기
   useEffect(() => {
@@ -124,6 +125,26 @@ export default function BoardHeader() {
             <Link href="/me" className="nav-link">
               내 프로필
             </Link>
+            {/* 관리자에게만 노출 */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="nav-link flex items-center gap-1 text-indigo-600 hover:text-indigo-700"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <path d="M12 2l7 4v6c0 4.4-3 8-7 10-4-2-7-5.6-7-10V6z" />
+                </svg>
+                관리자
+              </Link>
+            )}
           </div>
         </div>
 
@@ -225,6 +246,15 @@ export default function BoardHeader() {
             >
               내 프로필
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                onClick={() => setMobileOpen(false)}
+                className="block rounded-lg px-3 py-2.5 text-base font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
+              >
+                관리자
+              </Link>
+            )}
 
             <div className="my-2 h-px bg-slate-100" />
 

@@ -1,16 +1,15 @@
-// 사내 게시판 카테고리 (slug·이름·설명은 프론트 고정, 게시물 수는 API에서 조회)
+// 사내 게시판 카테고리.
+// 이름·설명(및 slug)은 설정 파일 src/config/board-categories.json 에서 관리한다.
+// slug 는 백엔드 시드(DbSeeder)의 카테고리 slug 와 반드시 일치해야 한다.
+import boardCategoriesConfig from "@/config/board-categories.json";
+
 export interface BoardCategory {
   slug: string;
   name: string;
   desc: string;
 }
 
-export const BOARD_CATEGORIES: BoardCategory[] = [
-  { slug: "notice", name: "공지사항", desc: "회사 전체 공지와 안내" },
-  { slug: "free", name: "자유게시판", desc: "직원 간 자유로운 소통" },
-  { slug: "resource", name: "업무자료", desc: "문서·템플릿·참고 자료" },
-  { slug: "team", name: "팀 소식", desc: "팀별 소식과 일정 공유" },
-];
+export const BOARD_CATEGORIES: BoardCategory[] = boardCategoriesConfig;
 
 // 백엔드 GET /api/categories 응답 (게시물 수 포함)
 export interface CategoryWithCount {

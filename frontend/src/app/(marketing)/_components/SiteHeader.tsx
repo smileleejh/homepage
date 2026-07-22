@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MARKETING_NAV } from "@/lib/nav";
-import { useAuthed, requestLogout } from "@/lib/auth";
+import { useAuthed, requestLogout, useIsAdmin } from "@/lib/auth";
 
 // 공개 사이트 상단 내비 — 데스크톱 메뉴 + 모바일 햄버거 (로그인 상태 인식)
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [authed, setAuthed] = useAuthed();
+  const isAdmin = useIsAdmin();
   const router = useRouter();
 
   // ESC 로 모바일 메뉴 닫기
@@ -58,6 +59,14 @@ export default function SiteHeader() {
         <div className="hidden items-center gap-3 md:flex">
           {authed ? (
             <>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="nav-link text-indigo-600 hover:text-indigo-700"
+                >
+                  관리자
+                </Link>
+              )}
               <Link href="/board" className="btn btn-primary px-5! py-2!">
                 게시판
               </Link>
@@ -120,6 +129,15 @@ export default function SiteHeader() {
 
             {authed ? (
               <>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className="block rounded-lg px-3 py-2.5 text-base font-semibold text-indigo-600 transition-colors hover:bg-indigo-50"
+                  >
+                    관리자
+                  </Link>
+                )}
                 <Link
                   href="/board"
                   onClick={() => setOpen(false)}
