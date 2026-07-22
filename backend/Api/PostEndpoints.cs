@@ -9,6 +9,9 @@ namespace backend.Api;
 /// <summary>게시글 작성 요청 (E-04)</summary>
 public record CreatePostRequest(string CategorySlug, string Title, string Body);
 
+/// <summary>게시글 수정 요청 (E-04)</summary>
+public record UpdatePostRequest(string CategorySlug, string Title, string Body);
+
 /// <summary>게시글 목록 항목 (E-02)</summary>
 public record PostListItem(
     int Id,
@@ -87,9 +90,10 @@ public static class PostEndpoints
       return Results.Ok(new PagedPosts(items, total, currentPage, size));
     });
 
-    // 게시글 상세 (조회수 증가). 작성자/관리자면 canDelete=true
+    // 게시글 상세. 기본은 조회수 증가, countView=false면 증가하지 않음(수정 화면 로드 등)
     board.MapGet("/posts/{id:int}", async (
         int id,
+        bool? countView,
         ApplicationDbContext db,
         UserManager<ApplicationUser> userManager,
         ClaimsPrincipal user) =>
@@ -103,8 +107,11 @@ public static class PostEndpoints
         return Results.NotFound();
       }
 
-      post.ViewCount++;
-      await db.SaveChangesAsync();
+      if (countView != false)
+      {
+        post.ViewCount++;
+        await db.SaveChangesAsync();
+      }
 
       var userId = userManager.GetUserId(user);
       var canDelete = post.AuthorId == userId || user.IsInRole(DbSeeder.AdminRole);
@@ -153,6 +160,53 @@ public static class PostEndpoints
 
       return Results.Created($"/api/posts/{post.Id}",
           new { post.Id, category = category.Slug });
+    });
+
+    // 게시글 수정 — 작성자 본인 또는 관리자만
+    board.MapPut("/posts/{id:int}", async (
+        int id,
+        UpdatePostRequest req,
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal user) =>
+    {
+      var post = await db.Posts.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+      if (post is null)
+      {
+        return Results.NotFound();
+      }
+
+      var userId = userManager.GetUserId(user);
+      if (post.AuthorId != userId && !user.IsInRole(DbSeeder.AdminRole))
+      {
+        return Results.Forbid();
+      }
+
+      if (string.IsNullOrWhiteSpace(req.Title) || string.IsNullOrWhiteSpace(req.Body))
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["required"] = ["제목·본문은 필수입니다."],
+        });
+      }
+
+      var category = await db.Categories
+          .FirstOrDefaultAsync(c => c.Slug == req.CategorySlug);
+      if (category is null)
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["category"] = ["유효한 카테고리를 선택하세요."],
+        });
+      }
+
+      post.CategoryId = category.Id;
+      post.Title = req.Title;
+      post.Body = req.Body;
+      post.UpdatedAt = DateTimeOffset.UtcNow;
+      await db.SaveChangesAsync();
+
+      return Results.NoContent();
     });
 
     // 게시글 삭제 (소프트 삭제) — 작성자 본인 또는 관리자만

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import CommentSection from "../../../_components/CommentSection";
 
 // E-03 게시글 상세 (본문, 조회수 증가, 삭제) — 실제 API 연동
 type PostDetailT = {
@@ -103,13 +104,8 @@ export default function PostDetailPage() {
             </div>
           </article>
 
-          {/* 댓글 (준비 중) */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-            <h2 className="text-lg font-bold">
-              댓글 <span className="text-sm font-normal text-slate-400">(준비 중)</span>
-            </h2>
-            <p className="mt-4 text-sm text-slate-400">댓글 기능은 곧 제공됩니다.</p>
-          </section>
+          {/* 댓글 */}
+          <CommentSection postId={postId} />
 
           {/* 하단 액션 */}
           <div className="flex items-center justify-between">
@@ -117,14 +113,22 @@ export default function PostDetailPage() {
               ← 목록으로
             </Link>
             {post.canDelete && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="btn border border-red-200 bg-white px-5! py-2.5! text-red-600 hover:bg-red-50"
-              >
-                {deleting ? "삭제 중…" : "삭제"}
-              </button>
+              <div className="flex gap-2">
+                <Link
+                  href={`/board/${post.categorySlug}/${post.id}/edit`}
+                  className="btn btn-outline px-5! py-2.5!"
+                >
+                  수정
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="btn border border-red-200 bg-white px-5! py-2.5! text-red-600 hover:bg-red-50"
+                >
+                  {deleting ? "삭제 중…" : "삭제"}
+                </button>
+              </div>
             )}
           </div>
         </>
