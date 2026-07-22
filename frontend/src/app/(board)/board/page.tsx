@@ -1,5 +1,6 @@
 import Link from "next/link";
 import BoardCategoryGrid from "../_components/BoardCategoryGrid";
+import PinnedNotices from "../_components/PinnedNotices";
 
 // E-01 게시판 홈 (카테고리/최근 글, 공지 고정)
 export default function BoardHomePage() {
@@ -28,25 +29,8 @@ export default function BoardHomePage() {
         </Link>
       </div>
 
-      {/* 공지 고정 */}
-      <Link
-        href="/board/notice"
-        className="card block border-l-4 border-l-indigo-500"
-      >
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-600">
-            공지
-          </span>
-          <div>
-            <h3 className="font-bold text-slate-900">
-              사내 게시판 이용 안내 및 커뮤니티 가이드
-            </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              게시판 사용 규칙과 카테고리 안내를 확인해 주세요.
-            </p>
-          </div>
-        </div>
-      </Link>
+      {/* 공지 고정 — 공지사항 게시판에서 체크한 글 노출 */}
+      <PinnedNotices />
 
       {/* 카테고리 그리드 */}
       <div>

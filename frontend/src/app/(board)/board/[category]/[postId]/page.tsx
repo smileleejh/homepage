@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import CommentSection from "../../../_components/CommentSection";
+import AttachmentList from "../../../_components/AttachmentList";
 
 // E-03 게시글 상세 (본문, 조회수 증가, 삭제) — 실제 API 연동
 type PostDetailT = {
@@ -102,6 +103,7 @@ export default function PostDetailPage() {
             <div className="mt-6 whitespace-pre-wrap leading-relaxed text-slate-700">
               {post.body}
             </div>
+            <AttachmentList postId={postId} />
           </article>
 
           {/* 댓글 */}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { BOARD_CATEGORIES } from "@/lib/board";
+import { useIsAdmin } from "@/lib/auth";
 
 const PAGE_SIZE = 10;
 
@@ -50,6 +51,10 @@ export default function PostListView({
     BOARD_CATEGORIES.find((c) => c.slug === category)?.name ?? category;
   const key = `${category}|${page}`;
 
+  // 공지사항 게시판 + 관리자일 때만 공지 노출 체크박스 표시
+  const isAdmin = useIsAdmin();
+  const showPin = category === "notice" && isAdmin;
+
   const [result, setResult] = useState<{
     key: string;
     data?: Paged;
@@ -81,6 +86,32 @@ export default function PostListView({
   const data = current?.data ?? null;
   const error = current?.error ?? null;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
+
+  // 공지 노출 토글 (관리자) — 성공 시 목록 항목 상태를 즉시 반영
+  async function togglePin(p: PostItem) {
+    const next = !p.isPinned;
+    try {
+      await apiFetch(`posts/${p.id}/pin`, {
+        method: "PATCH",
+        body: JSON.stringify({ pinned: next }),
+      });
+      setResult((prev) =>
+        prev && prev.data
+          ? {
+              ...prev,
+              data: {
+                ...prev.data,
+                items: prev.data.items.map((it) =>
+                  it.id === p.id ? { ...it, isPinned: next } : it,
+                ),
+              },
+            }
+          : prev,
+      );
+    } catch {
+      window.alert("공지 노출 설정에 실패했습니다. 권한을 확인하세요.");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -114,11 +145,12 @@ export default function PostListView({
 
       {/* 목록 */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="hidden grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:grid">
-          <span>제목</span>
-          <span className="w-20 text-center">작성자</span>
-          <span className="w-24 text-center">작성일</span>
-          <span className="w-14 text-right">조회</span>
+        <div className="hidden items-center gap-4 border-b border-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:flex">
+          {showPin && <span className="w-10 shrink-0 text-center">공지</span>}
+          <span className="flex-1">제목</span>
+          <span className="w-20 shrink-0 text-center">작성자</span>
+          <span className="w-24 shrink-0 text-center">작성일</span>
+          <span className="w-14 shrink-0 text-right">조회</span>
         </div>
 
         {error ? (
@@ -138,29 +170,45 @@ export default function PostListView({
         ) : (
           <ul className="divide-y divide-slate-100">
             {data.items.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/board/${p.categorySlug}/${p.id}`}
-                  className="grid gap-1 px-6 py-4 transition-colors hover:bg-slate-50 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center sm:gap-4"
-                >
-                  <span className="flex items-center gap-2 font-medium text-slate-900">
-                    {p.isPinned && (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
-                        공지
-                      </span>
-                    )}
+              <li
+                key={p.id}
+                className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-slate-50"
+              >
+                {showPin && (
+                  <label
+                    className="hidden w-10 shrink-0 cursor-pointer justify-center sm:flex"
+                    title="게시판 홈 상단 공지로 노출"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={p.isPinned}
+                      onChange={() => togglePin(p)}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                  </label>
+                )}
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  {p.isPinned && (
+                    <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600">
+                      공지
+                    </span>
+                  )}
+                  <Link
+                    href={`/board/${p.categorySlug}/${p.id}`}
+                    className="min-w-0 flex-1 truncate font-medium text-slate-900 hover:underline"
+                  >
                     {p.title}
-                  </span>
-                  <span className="text-sm text-slate-500 sm:w-20 sm:text-center">
-                    {p.authorName}
-                  </span>
-                  <span className="text-sm text-slate-400 sm:w-24 sm:text-center">
-                    {p.createdAt.slice(0, 10)}
-                  </span>
-                  <span className="text-sm text-slate-400 sm:w-14 sm:text-right">
-                    {p.viewCount}
-                  </span>
-                </Link>
+                  </Link>
+                </div>
+                <span className="hidden w-20 shrink-0 text-center text-sm text-slate-500 sm:block">
+                  {p.authorName}
+                </span>
+                <span className="hidden w-24 shrink-0 text-center text-sm text-slate-400 sm:block">
+                  {p.createdAt.slice(0, 10)}
+                </span>
+                <span className="hidden w-14 shrink-0 text-right text-sm text-slate-400 sm:block">
+                  {p.viewCount}
+                </span>
               </li>
             ))}
           </ul>

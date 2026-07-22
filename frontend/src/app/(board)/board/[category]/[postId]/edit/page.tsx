@@ -11,6 +11,7 @@ type PostDetailT = {
   categorySlug: string;
   title: string;
   body: string;
+  isPinned: boolean;
   canDelete: boolean;
 };
 
@@ -72,6 +73,7 @@ export default function EditPostPage() {
       initialCategory={post.categorySlug}
       initialTitle={post.title}
       initialBody={post.body}
+      initialPinned={post.isPinned}
     />
   );
 }

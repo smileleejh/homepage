@@ -6,11 +6,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api;
 
-/// <summary>게시글 작성 요청 (E-04)</summary>
-public record CreatePostRequest(string CategorySlug, string Title, string Body);
+/// <summary>게시글 작성 요청 (E-04). Pinned는 관리자만 반영(공지 등록)</summary>
+public record CreatePostRequest(string CategorySlug, string Title, string Body, bool Pinned = false);
 
-/// <summary>게시글 수정 요청 (E-04)</summary>
-public record UpdatePostRequest(string CategorySlug, string Title, string Body);
+/// <summary>게시글 수정 요청 (E-04). Pinned는 관리자만 반영(공지 등록/해제)</summary>
+public record UpdatePostRequest(string CategorySlug, string Title, string Body, bool Pinned = false);
+
+/// <summary>공지 노출(고정) 토글 요청 — 게시판 홈 상단 노출</summary>
+public record PinRequest(bool Pinned);
 
 /// <summary>게시글 목록 항목 (E-02)</summary>
 public record PostListItem(
@@ -90,6 +93,21 @@ public static class PostEndpoints
       return Results.Ok(new PagedPosts(items, total, currentPage, size));
     });
 
+    // 공지 노출 목록 — 게시판 홈 상단에 표시할 고정(IsPinned) 게시글
+    board.MapGet("/posts/pinned", async (ApplicationDbContext db) =>
+    {
+      var items = await db.Posts
+          .Where(p => p.IsPinned && !p.IsDeleted)
+          .OrderByDescending(p => p.CreatedAt)
+          .Take(10)
+          .Select(p => new PostListItem(
+              p.Id, p.Category!.Slug, p.Title, p.Author!.Name,
+              p.IsPinned, p.ViewCount, p.CreatedAt))
+          .ToListAsync();
+
+      return Results.Ok(items);
+    });
+
     // 게시글 상세. 기본은 조회수 증가, countView=false면 증가하지 않음(수정 화면 로드 등)
     board.MapGet("/posts/{id:int}", async (
         int id,
@@ -153,6 +171,8 @@ public static class PostEndpoints
         AuthorId = authorId,
         Title = req.Title,
         Body = req.Body,
+        // 공지 등록은 관리자 + 공지사항(notice) 카테고리에서만 가능
+        IsPinned = req.Pinned && user.IsInRole(DbSeeder.AdminRole) && category.Slug == "notice",
       };
 
       db.Posts.Add(post);
@@ -203,6 +223,36 @@ public static class PostEndpoints
       post.CategoryId = category.Id;
       post.Title = req.Title;
       post.Body = req.Body;
+      post.UpdatedAt = DateTimeOffset.UtcNow;
+      // 공지 등록/해제는 관리자만 반영, 공지사항(notice) 카테고리에서만 유지
+      if (user.IsInRole(DbSeeder.AdminRole))
+      {
+        post.IsPinned = req.Pinned && category.Slug == "notice";
+      }
+      await db.SaveChangesAsync();
+
+      return Results.NoContent();
+    });
+
+    // 공지 노출 토글 (IsPinned) — 관리자만. 게시판 홈 상단 노출 여부 제어
+    board.MapPatch("/posts/{id:int}/pin", async (
+        int id,
+        PinRequest req,
+        ApplicationDbContext db,
+        ClaimsPrincipal user) =>
+    {
+      if (!user.IsInRole(DbSeeder.AdminRole))
+      {
+        return Results.Forbid();
+      }
+
+      var post = await db.Posts.FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
+      if (post is null)
+      {
+        return Results.NotFound();
+      }
+
+      post.IsPinned = req.Pinned;
       post.UpdatedAt = DateTimeOffset.UtcNow;
       await db.SaveChangesAsync();
 
