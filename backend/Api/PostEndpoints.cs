@@ -66,9 +66,10 @@ public static class PostEndpoints
       return Results.Ok(cats);
     });
 
-    // 게시글 목록 (카테고리 slug 선택, 페이지네이션) — 공지 고정 우선, 최신순
+    // 게시글 목록 (카테고리·검색·페이지네이션) — 공지 고정 우선, 최신순
+    // field: author | title | body | (기본) titleBody
     board.MapGet("/posts", async (
-        string? category, int? page, int? pageSize, ApplicationDbContext db) =>
+        string? category, string? q, string? field, int? page, int? pageSize, ApplicationDbContext db) =>
     {
       var currentPage = page is > 0 ? page.Value : 1;
       var size = pageSize is > 0 and <= 50 ? pageSize.Value : 10;
@@ -77,6 +78,19 @@ public static class PostEndpoints
       if (!string.IsNullOrWhiteSpace(category))
       {
         query = query.Where(p => p.Category!.Slug == category);
+      }
+
+      // 검색어(대소문자 무시). 조건별 필터
+      if (!string.IsNullOrWhiteSpace(q))
+      {
+        var term = q.Trim().ToLower();
+        query = field switch
+        {
+          "author" => query.Where(p => p.Author!.Name.ToLower().Contains(term)),
+          "title" => query.Where(p => p.Title.ToLower().Contains(term)),
+          "body" => query.Where(p => p.Body.ToLower().Contains(term)),
+          _ => query.Where(p => p.Title.ToLower().Contains(term) || p.Body.ToLower().Contains(term)),
+        };
       }
 
       var total = await query.CountAsync();

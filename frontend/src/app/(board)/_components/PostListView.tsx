@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { BOARD_CATEGORIES } from "@/lib/board";
@@ -40,20 +41,60 @@ function pageList(current: number, total: number): (number | "ellipsis")[] {
   return out;
 }
 
+// 검색 조건
+const SEARCH_FIELDS = [
+  { value: "titleBody", label: "제목+내용" },
+  { value: "title", label: "제목" },
+  { value: "body", label: "내용" },
+  { value: "author", label: "작성자" },
+];
+
 export default function PostListView({
   category,
   page,
+  q = "",
+  field = "titleBody",
 }: {
   category: string;
   page: number;
+  q?: string;
+  field?: string;
 }) {
+  const router = useRouter();
   const categoryName =
     BOARD_CATEGORIES.find((c) => c.slug === category)?.name ?? category;
-  const key = `${category}|${page}`;
+  const key = `${category}|${page}|${field}|${q}`;
 
   // 공지사항 게시판 + 관리자일 때만 공지 노출 체크박스 표시
   const isAdmin = useIsAdmin();
   const showPin = category === "notice" && isAdmin;
+
+  // 검색 파라미터를 유지한 페이지 URL 생성
+  function buildHref(targetPage: number) {
+    const params = new URLSearchParams();
+    if (targetPage > 1) params.set("page", String(targetPage));
+    if (q) {
+      params.set("field", field);
+      params.set("q", q);
+    }
+    const qs = params.toString();
+    return `/board/${category}${qs ? `?${qs}` : ""}`;
+  }
+
+  // 검색 실행 → 1페이지 URL로 이동
+  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const qv = String(form.get("q") ?? "").trim();
+    const fv = String(form.get("field") ?? "titleBody");
+    const params = new URLSearchParams();
+    if (qv) {
+      params.set("field", fv);
+      params.set("q", qv);
+    }
+    const qs = params.toString();
+    router.push(`/board/${category}${qs ? `?${qs}` : ""}`);
+  }
 
   const [result, setResult] = useState<{
     key: string;
@@ -63,8 +104,11 @@ export default function PostListView({
 
   useEffect(() => {
     let active = true;
+    const search = q
+      ? `&q=${encodeURIComponent(q)}&field=${encodeURIComponent(field)}`
+      : "";
     apiFetch<Paged>(
-      `posts?category=${encodeURIComponent(category)}&page=${page}&pageSize=${PAGE_SIZE}`,
+      `posts?category=${encodeURIComponent(category)}&page=${page}&pageSize=${PAGE_SIZE}${search}`,
     )
       .then((data) => {
         if (active) setResult({ key, data: data ?? undefined });
@@ -79,7 +123,7 @@ export default function PostListView({
     return () => {
       active = false;
     };
-  }, [category, page, key]);
+  }, [category, page, q, field, key]);
 
   // 현재 카테고리·페이지와 일치하는 결과만 사용 → 전환 시 로딩 표시
   const current = result && result.key === key ? result : null;
@@ -143,6 +187,35 @@ export default function PostListView({
         </Link>
       </div>
 
+      {/* 검색 (작성자 / 제목 / 제목+내용 / 내용) */}
+      <form
+        key={`${field}|${q}`}
+        onSubmit={handleSearch}
+        className="flex flex-wrap items-center gap-2"
+      >
+        <select name="field" defaultValue={field} className="field w-auto shrink-0">
+          {SEARCH_FIELDS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <input
+          name="q"
+          defaultValue={q}
+          placeholder="검색어를 입력하세요"
+          className="field min-w-0 flex-1"
+        />
+        <button type="submit" className="btn btn-primary px-5! py-2.5!">
+          검색
+        </button>
+        {q && (
+          <Link href={`/board/${category}`} className="btn btn-outline px-4! py-2.5!">
+            초기화
+          </Link>
+        )}
+      </form>
+
       {/* 목록 */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="hidden items-center gap-4 border-b border-slate-100 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 sm:flex">
@@ -159,13 +232,19 @@ export default function PostListView({
           <p className="px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</p>
         ) : data.items.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm text-slate-400">아직 게시글이 없습니다.</p>
-            <Link
-              href={`/board/new?category=${category}`}
-              className="mt-4 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-            >
-              첫 글을 작성해 보세요 →
-            </Link>
+            {q ? (
+              <p className="text-sm text-slate-400">검색 결과가 없습니다.</p>
+            ) : (
+              <>
+                <p className="text-sm text-slate-400">아직 게시글이 없습니다.</p>
+                <Link
+                  href={`/board/new?category=${category}`}
+                  className="mt-4 inline-flex text-sm font-semibold text-indigo-600 hover:text-indigo-700"
+                >
+                  첫 글을 작성해 보세요 →
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -220,7 +299,7 @@ export default function PostListView({
         <nav className="flex items-center justify-center gap-1.5">
           {page > 1 ? (
             <Link
-              href={`/board/${category}?page=${page - 1}`}
+              href={buildHref(page - 1)}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
             >
               이전
@@ -247,7 +326,7 @@ export default function PostListView({
             ) : (
               <Link
                 key={p}
-                href={`/board/${category}?page=${p}`}
+                href={buildHref(p)}
                 className="grid h-9 min-w-9 place-items-center rounded-lg border border-slate-200 px-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
               >
                 {p}
@@ -257,7 +336,7 @@ export default function PostListView({
 
           {page < totalPages ? (
             <Link
-              href={`/board/${category}?page=${page + 1}`}
+              href={buildHref(page + 1)}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
             >
               다음

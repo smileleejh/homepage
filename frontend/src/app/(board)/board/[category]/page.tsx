@@ -6,11 +6,18 @@ export default async function PostListPage({
   searchParams,
 }: {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; field?: string }>;
 }) {
   const { category } = await params;
-  const { page } = await searchParams;
+  const { page, q, field } = await searchParams;
   const currentPage = Math.max(1, Number(page) || 1);
 
-  return <PostListView category={category} page={currentPage} />;
+  return (
+    <PostListView
+      category={category}
+      page={currentPage}
+      q={q ?? ""}
+      field={field ?? "titleBody"}
+    />
+  );
 }
