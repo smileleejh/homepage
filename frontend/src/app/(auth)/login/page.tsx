@@ -37,22 +37,44 @@ export default function LoginPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">로그인</h1>
+      <div className="text-center">
+        <h1 className="text-2xl font-bold">로그인</h1>
+        <p className="mt-2 text-sm text-slate-500">직원 계정으로 로그인하세요.</p>
+      </div>
+
       <form onSubmit={onSubmit} className="space-y-3">
-        <input name="email" type="email" required placeholder="회사 이메일" className="w-full rounded border p-2" />
-        <input name="password" type="password" required placeholder="비밀번호" className="w-full rounded border p-2" />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder="회사 이메일"
+          className="field"
+        />
+        <input
+          name="password"
+          type="password"
+          required
+          placeholder="비밀번호"
+          className="field"
+        />
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        )}
+        <button type="submit" disabled={loading} className="btn btn-accent w-full">
           {loading ? "로그인 중…" : "로그인"}
         </button>
       </form>
-      <div className="flex justify-between text-sm text-gray-500">
-        <Link href="/register">회원가입</Link>
-        <Link href="/forgot-password">비밀번호 찾기</Link>
+
+      <div className="flex justify-between text-sm">
+        <Link href="/register" className="text-slate-500 transition-colors hover:text-slate-900">
+          회원가입
+        </Link>
+        <Link
+          href="/forgot-password"
+          className="text-slate-500 transition-colors hover:text-slate-900"
+        >
+          비밀번호 찾기
+        </Link>
       </div>
     </>
   );

@@ -13,6 +13,9 @@ const SKIP_RESPONSE_HEADERS = new Set([
   "set-cookie",
 ]);
 
+// 본문을 가질 수 없는 상태 코드 — 빈 body라도 넘기면 Response 생성자가 예외를 던진다(204 삭제 등)
+const NULL_BODY_STATUSES = new Set([101, 103, 204, 205, 304]);
+
 async function handle(request: NextRequest): Promise<Response> {
   const subPath = request.nextUrl.pathname.replace(/^\/api\//, "");
   const target = `${BACKEND}/api/${subPath}${request.nextUrl.search}`;
@@ -35,7 +38,10 @@ async function handle(request: NextRequest): Promise<Response> {
   }
 
   // 압축 해제된 본문을 그대로 전달하고 인코딩 헤더는 제거
-  const body = await backendRes.arrayBuffer();
+  // (204/304 등은 본문 없이 반환 — 그렇지 않으면 Response 생성자가 예외)
+  const body = NULL_BODY_STATUSES.has(backendRes.status)
+    ? null
+    : await backendRes.arrayBuffer();
   const responseHeaders = new Headers();
   backendRes.headers.forEach((value, key) => {
     if (!SKIP_RESPONSE_HEADERS.has(key.toLowerCase())) responseHeaders.set(key, value);

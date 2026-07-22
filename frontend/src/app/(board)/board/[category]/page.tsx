@@ -1,14 +1,16 @@
-// E-02 게시글 목록 (카테고리별, 검색/페이지네이션, 조회수)
+import PostListView from "../../_components/PostListView";
+
+// E-02 게시글 목록 — 서버에서 params/searchParams를 읽어 클라이언트 뷰에 전달
 export default async function PostListPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ category: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { category } = await params;
-  return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-bold">게시글 목록</h1>
-      <p className="text-gray-600">카테고리: {category}</p>
-    </section>
-  );
+  const { page } = await searchParams;
+  const currentPage = Math.max(1, Number(page) || 1);
+
+  return <PostListView category={category} page={currentPage} />;
 }

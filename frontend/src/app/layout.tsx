@@ -1,16 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -26,11 +15,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    // suppressHydrationWarning: 브라우저 확장(data-hwp-extension 등)이 <html>에
+    // 속성을 주입해 생기는 하이드레이션 불일치 경고를 억제 (실제 앱 버그와 무관)
+    <html lang="ko" className="h-full antialiased" suppressHydrationWarning>
+      <body className="flex min-h-full flex-col">
+        {/* 모던 한글 폰트 Pretendard (React 19가 <head>로 호이스팅) */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendard-dynamic-subset.min.css"
+          precedence="default"
+        />
+        {children}
+      </body>
     </html>
   );
 }

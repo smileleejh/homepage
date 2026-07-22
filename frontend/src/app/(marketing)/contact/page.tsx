@@ -37,28 +37,57 @@ export default function ContactPage() {
   }
 
   return (
-    <section className="max-w-lg space-y-4">
-      <h1 className="text-2xl font-bold">문의하기</h1>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input name="name" required placeholder="이름" className="w-full rounded border p-2" />
-        <input name="email" type="email" required placeholder="이메일" className="w-full rounded border p-2" />
-        <input name="company" placeholder="회사명(선택)" className="w-full rounded border p-2" />
-        <input name="phone" placeholder="연락처(선택)" className="w-full rounded border p-2" />
-        <input name="title" required placeholder="제목" className="w-full rounded border p-2" />
-        <textarea name="message" required placeholder="문의 내용" rows={5} className="w-full rounded border p-2" />
-        <label className="flex items-center gap-2 text-sm">
-          <input name="privacyConsent" type="checkbox" required />
+    <div className="mx-auto max-w-xl px-6 py-20">
+      <div className="text-center">
+        <span className="eyebrow">Contact</span>
+        <h1 className="mt-3 text-4xl font-bold">문의하기</h1>
+        <div className="mx-auto mt-5 h-1 w-12 rounded-full bg-linear-to-r from-indigo-600 to-violet-600" />
+        <p className="mt-6 text-slate-600">
+          궁금한 점을 남겨 주시면 담당자가 빠르게 회신드립니다.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="card mt-10 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <input name="name" required placeholder="이름 *" className="field" />
+          <input
+            name="email"
+            type="email"
+            required
+            placeholder="이메일 *"
+            className="field"
+          />
+          <input name="company" placeholder="회사명 (선택)" className="field" />
+          <input name="phone" placeholder="연락처 (선택)" className="field" />
+        </div>
+        <input name="title" required placeholder="제목 *" className="field" />
+        <textarea
+          name="message"
+          required
+          placeholder="문의 내용 *"
+          rows={5}
+          className="field resize-none"
+        />
+        <label className="flex items-center gap-2 text-sm text-slate-600">
+          <input
+            name="privacyConsent"
+            type="checkbox"
+            required
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+          />
           개인정보 수집·이용에 동의합니다.
         </label>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+        )}
         <button
           type="submit"
           disabled={submitting}
-          className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="btn btn-accent w-full"
         >
           {submitting ? "제출 중…" : "문의 제출"}
         </button>
       </form>
-    </section>
+    </div>
   );
 }

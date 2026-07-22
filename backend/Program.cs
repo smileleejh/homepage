@@ -88,6 +88,9 @@ app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
 // 문의 접수/조회 엔드포인트
 app.MapInquiryEndpoints();
 
+// 사내 게시판 엔드포인트 (작성/목록/상세/카테고리)
+app.MapPostEndpoints();
+
 // 시작 시 역할·부트스트랩 관리자 시드 (마이그레이션 적용 후 테이블 존재 전제)
 using (var scope = app.Services.CreateScope())
 {

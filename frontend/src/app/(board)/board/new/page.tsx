@@ -1,9 +1,16 @@
-// E-04 게시글 작성 (제목/본문/카테고리/첨부)
-export default function NewPostPage() {
-  return (
-    <section className="space-y-4">
-      <h1 className="text-2xl font-bold">글쓰기</h1>
-      <p className="text-gray-600">제목 · 본문 · 카테고리 선택 · 파일 첨부 폼 영역.</p>
-    </section>
-  );
+import NewPostForm from "../../_components/NewPostForm";
+import { BOARD_CATEGORIES } from "@/lib/board";
+
+// E-04 글쓰기 — 서버에서 ?category= 를 읽어 유효하면 프리셀렉트로 전달
+export default async function NewPostPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const { category } = await searchParams;
+  const initialCategory = BOARD_CATEGORIES.some((c) => c.slug === category)
+    ? category!
+    : "";
+
+  return <NewPostForm initialCategory={initialCategory} />;
 }

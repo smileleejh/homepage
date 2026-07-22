@@ -1,5 +1,6 @@
 using backend.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Data;
 
@@ -16,6 +17,7 @@ public static class DbSeeder
   {
     var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+    var db = services.GetRequiredService<ApplicationDbContext>();
     var config = services.GetRequiredService<IConfiguration>();
     var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
@@ -29,7 +31,25 @@ public static class DbSeeder
       }
     }
 
-    // 2) 부트스트랩 관리자 멱등 생성 (설정값이 있을 때만)
+    // 2) 게시판 카테고리 멱등 생성 (프론트 slug와 일치 — notice/free/resource/team)
+    var seedCategories = new[]
+    {
+      (Slug: "notice", Name: "공지사항", SortOrder: 1),
+      (Slug: "free", Name: "자유게시판", SortOrder: 2),
+      (Slug: "resource", Name: "업무자료", SortOrder: 3),
+      (Slug: "team", Name: "팀 소식", SortOrder: 4),
+    };
+    foreach (var (slug, name, sortOrder) in seedCategories)
+    {
+      if (!await db.Categories.AnyAsync(c => c.Slug == slug))
+      {
+        db.Categories.Add(new Category { Slug = slug, Name = name, SortOrder = sortOrder });
+        logger.LogInformation("카테고리 생성: {Slug}", slug);
+      }
+    }
+    await db.SaveChangesAsync();
+
+    // 3) 부트스트랩 관리자 멱등 생성 (설정값이 있을 때만)
     var adminEmail = config["Seed:AdminEmail"];
     var adminPassword = config["Seed:AdminPassword"];
     if (string.IsNullOrWhiteSpace(adminEmail) || string.IsNullOrWhiteSpace(adminPassword))
