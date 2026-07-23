@@ -5,6 +5,7 @@ using backend.Api;
 using backend.Data;
 using backend.Domain;
 using backend.Infrastructure;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -84,6 +85,19 @@ builder.Services.AddRateLimiter(options =>
             QueueLimit = 0,   // 대기시키지 않고 즉시 429 — 폼 제출은 기다릴 이유가 없다
           }));
 });
+
+// 첨부파일 업로드 제한 (F-BRD-04)
+builder.Services.Configure<UploadOptions>(
+    builder.Configuration.GetSection(UploadOptions.SectionName));
+var uploadOptions = builder.Configuration.GetSection(UploadOptions.SectionName).Get<UploadOptions>()
+    ?? new UploadOptions();
+
+// 요청 본문 한도를 업로드 제한에 맞춘다 — 엔드포인트에서 파일별로 다시 검증하지만,
+// 그 전에 서버가 거대한 본문을 끝까지 읽어버리지 않도록 입구에서 막는다.
+builder.Services.Configure<FormOptions>(options =>
+    options.MultipartBodyLengthLimit = uploadOptions.MaxRequestBodyBytes);
+builder.WebHost.ConfigureKestrel(options =>
+    options.Limits.MaxRequestBodySize = uploadOptions.MaxRequestBodyBytes);
 
 // 개발용 이메일 발송기(로그 출력) — 운영에서 실제 발송기로 교체
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, LoggingEmailSender>();

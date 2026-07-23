@@ -1,11 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, extractProblemMessage } from "@/lib/api";
 import { BOARD_CATEGORIES } from "@/lib/board";
 import { useIsAdmin } from "@/lib/auth";
+
+// 서버가 내려주는 첨부 제한 (GET /api/attachments/policy)
+interface UploadPolicy {
+  maxFileSizeBytes: number;
+  maxFilesPerPost: number;
+  allowedExtensions: string[];
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${Math.round((bytes / (1024 * 1024)) * 10) / 10}MB`;
+  if (bytes >= 1024) return `${Math.round((bytes / 1024) * 10) / 10}KB`;
+  return `${bytes}B`;
+}
+
+// 업로드 전 1차 검증 — 최종 판단은 서버가 한다. 규칙을 못 받았으면 통과시키고 서버에 맡긴다.
+function validateFiles(files: FileList, policy: UploadPolicy | null): string | null {
+  if (!policy) return null;
+  if (files.length > policy.maxFilesPerPost) {
+    return `첨부는 게시글당 최대 ${policy.maxFilesPerPost}개입니다.`;
+  }
+  for (const file of Array.from(files)) {
+    const dot = file.name.lastIndexOf(".");
+    const extension = dot >= 0 ? file.name.slice(dot).toLowerCase() : "";
+    if (!extension || !policy.allowedExtensions.includes(extension)) {
+      return `'${file.name}': 허용되지 않는 형식입니다. (허용: ${policy.allowedExtensions.join(" ")})`;
+    }
+    if (file.size > policy.maxFileSizeBytes) {
+      return `'${file.name}': 파일당 최대 ${formatSize(policy.maxFileSizeBytes)}까지 첨부할 수 있습니다.`;
+    }
+  }
+  return null;
+}
 
 // 게시글 작성/수정 공용 폼 (공지 등록: 관리자 + 공지사항 카테고리, 파일 첨부 포함)
 export default function PostForm({
@@ -28,13 +60,30 @@ export default function PostForm({
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState(initialCategory);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [policy, setPolicy] = useState<UploadPolicy | null>(null);
   const isAdmin = useIsAdmin();
   const isEdit = mode === "edit";
   const canPin = isAdmin && category === "notice"; // 공지 등록은 공지사항에서만
   const cancelHref =
     isEdit && postId != null ? `/board/${initialCategory}/${postId}` : "/board";
 
-  // 첨부파일 업로드 (multipart)
+  // 첨부 제한은 서버가 source of truth — 화면에 하드코딩하지 않는다.
+  // 조회 실패 시 policy는 null로 남고, 클라이언트 사전 검증 없이 서버 검증만 적용된다.
+  useEffect(() => {
+    let active = true;
+    apiFetch<UploadPolicy>("attachments/policy")
+      .then((data) => {
+        if (active && data) setPolicy(data);
+      })
+      .catch(() => {
+        // 무시 — 첨부 없이 글 저장은 가능하고, 최종 검증은 서버가 한다
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // 첨부파일 업로드 (multipart) — 실패 사유는 서버 메시지를 그대로 쓴다
   async function uploadFiles(id: number, files: FileList) {
     const fd = new FormData();
     Array.from(files).forEach((f) => fd.append("files", f));
@@ -43,7 +92,15 @@ export default function PostForm({
       body: fd,
       credentials: "include",
     });
-    if (!res.ok) throw new Error("upload failed");
+    if (!res.ok) {
+      const raw = await res.text().catch(() => "");
+      throw new Error(
+        extractProblemMessage(raw) ??
+          (res.status === 413
+            ? "첨부파일 용량이 너무 큽니다."
+            : "첨부파일 업로드에 실패했습니다."),
+      );
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -51,6 +108,18 @@ export default function PostForm({
     setSubmitting(true);
     setError(null);
     const form = new FormData(e.currentTarget);
+
+    // 첨부 검증은 글 저장 전에 한다 — 저장한 뒤 거절당하면 글만 남고 첨부가 빠진다
+    const selectedFiles = fileInputRef.current?.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      const fileError = validateFiles(selectedFiles, policy);
+      if (fileError) {
+        setError(fileError);
+        setSubmitting(false);
+        return;
+      }
+    }
+
     const pinned = canPin && form.get("pinned") === "on";
     const payload = JSON.stringify({
       categorySlug: category,
@@ -71,13 +140,16 @@ export default function PostForm({
         targetId = created?.id;
       }
 
-      // 선택한 파일 업로드 (실패해도 글은 저장됨)
-      const files = fileInputRef.current?.files;
-      if (targetId != null && files && files.length > 0) {
+      // 선택한 파일 업로드 (실패해도 글은 저장됨 — 사유를 알려주고 글 상세로 넘어간다)
+      if (targetId != null && selectedFiles && selectedFiles.length > 0) {
         try {
-          await uploadFiles(targetId, files);
-        } catch {
-          window.alert("일부 첨부파일 업로드에 실패했습니다.");
+          await uploadFiles(targetId, selectedFiles);
+        } catch (err) {
+          window.alert(
+            err instanceof Error && err.message
+              ? `첨부파일이 업로드되지 않았습니다.\n${err.message}`
+              : "첨부파일 업로드에 실패했습니다.",
+          );
         }
       }
 
@@ -161,8 +233,15 @@ export default function PostForm({
             ref={fileInputRef}
             type="file"
             multiple
+            accept={policy?.allowedExtensions.join(",")}
             className="block w-full text-sm text-slate-500 file:mr-4 file:rounded-full file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-slate-800"
           />
+          {policy && (
+            <p className="mt-1.5 text-xs text-slate-500">
+              최대 {policy.maxFilesPerPost}개 · 파일당 {formatSize(policy.maxFileSizeBytes)}까지 ·
+              허용 형식 {policy.allowedExtensions.join(" ")}
+            </p>
+          )}
           {isEdit && (
             <p className="mt-1.5 text-xs text-slate-400">
               선택한 파일은 기존 첨부에 추가됩니다.
