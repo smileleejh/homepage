@@ -1,8 +1,10 @@
 using backend.Data;
 using backend.Domain;
+using backend.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace backend.Api;
 
@@ -75,7 +77,9 @@ public static class InquiryEndpoints
         CreateInquiryRequest req,
         ApplicationDbContext db,
         HttpContext http,
-        ILoggerFactory loggerFactory) =>
+        ILoggerFactory loggerFactory,
+        IEmailQueue emailQueue,
+        IOptions<EmailOptions> emailOptions) =>
     {
       // 허니팟 — 숨김 필드가 채워져 있으면 봇으로 간주한다.
       // 저장하지 않되 정상 접수와 같은 응답을 돌려준다. 거절을 알려주면 어느 필드가 덫인지
@@ -123,7 +127,12 @@ public static class InquiryEndpoints
       db.Inquiries.Add(inquiry);
       await db.SaveChangesAsync();
 
-      // TODO(M2): 담당자 이메일 알림(F-INQ-03), email_logs 기록
+      // 담당자 알림 (F-INQ-03) — 큐에 넣기만 하고 응답한다.
+      // 발송 결과(email_logs 기록 포함)는 EmailDispatcher가 백그라운드에서 처리하므로
+      // 메일 서버가 느리거나 죽어 있어도 접수 자체는 성공한다.
+      QueueNotifications(inquiry, emailQueue, emailOptions.Value,
+          loggerFactory.CreateLogger("InquiryEndpoints"));
+
       return Results.Created($"/api/inquiries/{inquiry.Id}", new { inquiry.Id });
     }).RequireRateLimiting(RateLimitPolicy);
 
@@ -254,5 +263,67 @@ public static class InquiryEndpoints
     });
 
     return app;
+  }
+
+  /// <summary>
+  /// 신규 문의 알림을 담당자 수만큼 대기열에 넣는다 (F-INQ-03).
+  /// 알림 실패가 접수 실패로 이어지면 안 되므로 여기서는 예외를 던지지 않고 로그만 남긴다.
+  /// </summary>
+  private static void QueueNotifications(
+      Inquiry inquiry, IEmailQueue queue, EmailOptions options, ILogger logger)
+  {
+    var recipients = options.InquiryRecipients
+        .Where(address => !string.IsNullOrWhiteSpace(address))
+        .ToArray();
+    if (recipients.Length == 0)
+    {
+      logger.LogWarning(
+          "Email:InquiryRecipients 미설정 — 문의 {InquiryId} 담당자 알림을 보내지 않습니다.", inquiry.Id);
+      return;
+    }
+
+    var subject = $"[문의 접수 #{inquiry.Id}] {inquiry.Title}";
+    var body = BuildNotificationBody(inquiry, options.AdminBaseUrl);
+
+    foreach (var recipient in recipients)
+    {
+      if (!queue.TryEnqueue(new EmailJob(
+              EmailType.InquiryNotify, recipient, subject, body, inquiry.Id)))
+      {
+        // 대기열이 가득 찼다 — 발송 자체가 없었으므로 email_logs에도 남지 않는다
+        logger.LogError(
+            "이메일 대기열 포화 — 문의 {InquiryId} 알림을 {Recipient}에게 보내지 못했습니다.",
+            inquiry.Id, recipient);
+      }
+    }
+  }
+
+  /// <summary>담당자 알림 메일 본문. 상세 확인 링크는 관리자 화면 주소가 설정된 경우에만 넣는다.</summary>
+  private static string BuildNotificationBody(Inquiry inquiry, string adminBaseUrl)
+  {
+    var lines = new List<string>
+    {
+      "새 문의가 접수되었습니다.",
+      "",
+      $"접수번호: #{inquiry.Id}",
+      $"접수일시: {inquiry.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm}",
+      $"이름: {inquiry.Name}",
+      $"이메일: {inquiry.Email}",
+      $"회사: {inquiry.Company ?? "-"}",
+      $"연락처: {inquiry.Phone ?? "-"}",
+      $"분류: {inquiry.Category ?? "-"}",
+      $"제목: {inquiry.Title}",
+      "",
+      "내용:",
+      inquiry.Message,
+    };
+
+    if (!string.IsNullOrWhiteSpace(adminBaseUrl))
+    {
+      lines.Add("");
+      lines.Add($"상세 확인: {adminBaseUrl.TrimEnd('/')}/admin/inquiries/{inquiry.Id}");
+    }
+
+    return string.Join(Environment.NewLine, lines);
   }
 }

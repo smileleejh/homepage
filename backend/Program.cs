@@ -102,6 +102,14 @@ builder.WebHost.ConfigureKestrel(options =>
 // 개발용 이메일 발송기(로그 출력) — 운영에서 실제 발송기로 교체
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, LoggingEmailSender>();
 
+// 알림 메일 (F-INQ-03): 큐 + 백그라운드 발송기 + 발송 결과 email_logs 기록
+builder.Services.Configure<EmailOptions>(
+    builder.Configuration.GetSection(EmailOptions.SectionName));
+builder.Services.AddScoped<IAppEmailSender, LoggingAppEmailSender>();
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailQueue>());
+builder.Services.AddHostedService<EmailDispatcher>();
+
 // CORS: 프론트 개발 서버 허용 (BFF 동일 사이트 배포 시에는 불필요)
 const string FrontendCors = "frontend";
 builder.Services.AddCors(options =>
