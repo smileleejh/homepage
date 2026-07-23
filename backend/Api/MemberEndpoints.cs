@@ -169,6 +169,7 @@ public static class MemberEndpoints
       }
 
       // 역할 변경 — 정확히 하나의 역할만 갖도록 정규화
+      var roleChanged = false;
       if (newRole is not null)
       {
         var currentRoles = await userManager.GetRolesAsync(target);
@@ -176,10 +177,12 @@ public static class MemberEndpoints
         if (toRemove.Count > 0)
         {
           await userManager.RemoveFromRolesAsync(target, toRemove);
+          roleChanged = true;
         }
         if (!currentRoles.Contains(newRole))
         {
           await userManager.AddToRoleAsync(target, newRole);
+          roleChanged = true;
         }
       }
 
@@ -189,13 +192,17 @@ public static class MemberEndpoints
         target.Status = newStatus.Value;
         target.UpdatedAt = DateTimeOffset.UtcNow;
         await userManager.UpdateAsync(target);
+      }
 
-        // 비활성 전환은 로그인 차단만으로 끝나지 않는다 — 이미 로그인해 둔 쿠키 세션이 남아 있으면
-        // 정지시켜도 계속 이용할 수 있다. 보안 스탬프를 갱신해 기존 세션을 무효화한다.
-        if (newStatus.Value != UserStatus.Active)
-        {
-          await userManager.UpdateSecurityStampAsync(target);
-        }
+      // 기존 쿠키 세션 무효화 — 변경 내용을 즉시 반영한다.
+      // 갱신하지 않으면 이미 발급된 쿠키가 그대로 살아 있어, 관리자 강등 뒤에도 쿠키에 박힌
+      // 역할 클레임이 재검증 주기(SecurityStampValidatorOptions.ValidationInterval)까지 유효하고
+      // 정지 처리한 계정도 그동안 계속 이용할 수 있다.
+      // 역할은 승격/강등 방향과 무관하게 갱신한다 — 대상 사용자는 재로그인해야 하지만,
+      // 드문 관리 작업이고 권한이 언제 바뀌는지가 명확해진다.
+      if (roleChanged || (newStatus is not null && newStatus.Value != UserStatus.Active))
+      {
+        await userManager.UpdateSecurityStampAsync(target);
       }
 
       return Results.NoContent();

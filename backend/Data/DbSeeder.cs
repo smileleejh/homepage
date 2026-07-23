@@ -45,15 +45,21 @@ public static class DbSeeder
       logger.LogInformation("역할 없는 계정 보정: {Email} → {Role}", user.Email, EmployeeRole);
     }
 
-    // 1.6) 이메일 인증은 끝났는데 상태가 Pending에 머문 계정 보정 — 인증 후 상태 전환이 없던 시기의 계정 복구
-    var promoted = await db.Users
-        .Where(u => u.EmailConfirmed && u.Status == UserStatus.Pending)
-        .ExecuteUpdateAsync(s => s
-            .SetProperty(u => u.Status, UserStatus.Active)
-            .SetProperty(u => u.UpdatedAt, DateTimeOffset.UtcNow));
-    if (promoted > 0)
+    // 1.6) 레거시 보정 — 인증 후 상태 전환 로직이 없던 시기에 만들어진
+    // "이메일 인증 완료 + Pending" 계정을 Active로 올린다.
+    // 신규 가입은 ApplicationUserManager.ConfirmEmailAsync가 처리하므로 평소에는 필요 없다.
+    // 무조건 실행하면 관리자가 A-04에서 Pending으로 되돌린 계정까지 재시작마다 되살아나므로
+    // Seed:PromoteConfirmedUsers=true 인 경우에만 1회성으로 실행한다.
+    if (config.GetValue<bool>("Seed:PromoteConfirmedUsers"))
     {
-      logger.LogInformation("이메일 인증 완료 계정 상태 보정: {Count}건 → Active", promoted);
+      var promoted = await db.Users
+          .Where(u => u.EmailConfirmed && u.Status == UserStatus.Pending)
+          .ExecuteUpdateAsync(s => s
+              .SetProperty(u => u.Status, UserStatus.Active)
+              .SetProperty(u => u.UpdatedAt, DateTimeOffset.UtcNow));
+      logger.LogWarning(
+          "Seed:PromoteConfirmedUsers=true — 이메일 인증 완료 계정 상태 보정: {Count}건 → Active. " +
+          "보정 후 이 설정을 false로 되돌리세요.", promoted);
     }
 
     // 2) 게시판 카테고리 멱등 생성 (프론트 slug와 일치 — notice/free/resource/team)
