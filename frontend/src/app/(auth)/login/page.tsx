@@ -3,6 +3,23 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { extractProblemMessage } from "@/lib/api";
+
+// Identity 로그인 실패 사유를 한국어 안내로 바꾼다.
+// 서버는 401 ProblemDetails의 detail에 SignInResult 값("Failed"/"NotAllowed"/"LockedOut")을 담아 보낸다.
+// NotAllowed는 이메일 미인증과 계정 비활성(정지)을 모두 포함한다 — 어느 쪽인지는 알려주지 않는다(계정 정보 노출 방지).
+function toLoginErrorMessage(raw: string): string {
+  switch (extractProblemMessage(raw)) {
+    case "NotAllowed":
+      return "로그인할 수 없는 계정입니다. 이메일 인증을 마쳤는지 확인하시고, 정지된 계정이라면 관리자에게 문의하세요.";
+    case "LockedOut":
+      return "로그인 시도 횟수를 초과해 계정이 일시적으로 잠겼습니다. 잠시 후 다시 시도하세요.";
+    case "RequiresTwoFactor":
+      return "2단계 인증이 필요합니다.";
+    default:
+      return "로그인에 실패했습니다. 이메일과 비밀번호를 확인하세요.";
+  }
+}
 
 // P-07 로그인 — Identity 쿠키 로그인(/api/auth/login?useCookies=true) (F-AUTH-03)
 export default function LoginPage() {
@@ -24,15 +41,17 @@ export default function LoginPage() {
         password: form.get("password"),
       }),
     });
-    setLoading(false);
-
     if (res.ok) {
+      setLoading(false);
       const returnUrl =
         new URLSearchParams(window.location.search).get("returnUrl") ?? "/board";
       router.push(returnUrl);
-    } else {
-      setError("로그인에 실패했습니다. 이메일 인증 여부와 자격 증명을 확인하세요.");
+      return;
     }
+
+    const raw = await res.text().catch(() => "");
+    setLoading(false);
+    setError(toLoginErrorMessage(raw));
   }
 
   return (

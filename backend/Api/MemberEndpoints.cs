@@ -189,6 +189,13 @@ public static class MemberEndpoints
         target.Status = newStatus.Value;
         target.UpdatedAt = DateTimeOffset.UtcNow;
         await userManager.UpdateAsync(target);
+
+        // 비활성 전환은 로그인 차단만으로 끝나지 않는다 — 이미 로그인해 둔 쿠키 세션이 남아 있으면
+        // 정지시켜도 계속 이용할 수 있다. 보안 스탬프를 갱신해 기존 세션을 무효화한다.
+        if (newStatus.Value != UserStatus.Active)
+        {
+          await userManager.UpdateSecurityStampAsync(target);
+        }
       }
 
       return Results.NoContent();

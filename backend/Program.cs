@@ -29,7 +29,14 @@ builder.Services
       options.Password.RequiredLength = 8;           // 비밀번호 정책 (F-AUTH-04)
     })
     .AddRoles<IdentityRole>()                          // employee / admin 역할
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddUserManager<ApplicationUserManager>()          // 이메일 인증 후 Status 승격 (F-AUTH-02)
+    .AddSignInManager<ApplicationSignInManager>();     // Status != Active 로그인 차단 (DESIGN §4.5)
+
+// 정지 처리된 계정의 기존 쿠키 세션을 언제 끊을지 — 보안 스탬프 재검증 주기.
+// 기본값 30분은 정지 후에도 그만큼 계속 이용 가능하다는 뜻이라 5분으로 줄인다.
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+    options.ValidationInterval = TimeSpan.FromMinutes(5));
 
 builder.Services.AddAuthorization();
 
