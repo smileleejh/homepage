@@ -1,9 +1,13 @@
+using System.Net;
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using backend.Api;
 using backend.Data;
 using backend.Domain;
 using backend.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,6 +44,47 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 
 builder.Services.AddAuthorization();
 
+// 실제 클라이언트 IP 복원 — 브라우저는 Next.js BFF하고만 통신하므로, 그대로 두면 모든 요청의
+// RemoteIpAddress가 BFF 서버 IP가 된다. IP 기준 Rate Limit이 전원 공용 한도로 무너지고
+// 문의의 CreatedIp도 BFF IP만 남으므로, 신뢰하는 프록시가 붙인 X-Forwarded-For를 반영한다.
+// KnownProxies 기본값은 루프백이라 개발(localhost BFF)은 설정 없이 동작하고,
+// 운영에서 BFF가 다른 호스트면 Network:TrustedProxies에 그 IP를 넣어야 한다.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+  options.ForwardedHeaders = ForwardedHeaders.XForwardedFor;
+  options.ForwardLimit = 1;   // BFF 한 단계만 인정 — 그 앞의 값은 클라이언트가 위조할 수 있다
+  foreach (var proxy in builder.Configuration.GetSection("Network:TrustedProxies").Get<string[]>() ?? [])
+  {
+    if (IPAddress.TryParse(proxy, out var address))
+    {
+      options.KnownProxies.Add(address);
+    }
+  }
+});
+
+// 공개 문의 폼 스팸 방지 (F-INQ-01) — IP당 고정 창(fixed window) 제한
+builder.Services.AddRateLimiter(options =>
+{
+  options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+  options.OnRejected = (context, _) =>
+  {
+    context.HttpContext.Response.Headers.RetryAfter =
+        ((int)InquiryEndpoints.RateLimitWindow.TotalSeconds).ToString();
+    return ValueTask.CompletedTask;
+  };
+
+  options.AddPolicy(InquiryEndpoints.RateLimitPolicy, http =>
+      RateLimitPartition.GetFixedWindowLimiter(
+          // IP를 못 구하면 하나의 공용 버킷으로 묶는다 — 익명 트래픽을 무제한으로 두지 않는다
+          partitionKey: http.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+          factory: _ => new FixedWindowRateLimiterOptions
+          {
+            PermitLimit = InquiryEndpoints.RateLimitPermitLimit,
+            Window = InquiryEndpoints.RateLimitWindow,
+            QueueLimit = 0,   // 대기시키지 않고 즉시 429 — 폼 제출은 기다릴 이유가 없다
+          }));
+});
+
 // 개발용 이메일 발송기(로그 출력) — 운영에서 실제 발송기로 교체
 builder.Services.AddTransient<IEmailSender<ApplicationUser>, LoggingEmailSender>();
 
@@ -54,6 +99,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// 가장 먼저 실행해야 이후 미들웨어(Rate Limit 등)가 실제 클라이언트 IP를 보게 된다
+app.UseForwardedHeaders();
+
 if (app.Environment.IsDevelopment())
 {
   app.MapOpenApi();
@@ -66,6 +114,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseCors(FrontendCors);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

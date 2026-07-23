@@ -1,11 +1,15 @@
 using backend.Data;
 using backend.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api;
 
-/// <summary>문의 제출 요청 (P-05 문의 폼)</summary>
+/// <summary>
+/// 문의 제출 요청 (P-05 문의 폼).
+/// Website는 허니팟 — 화면에서 숨겨져 사람은 채울 수 없고, 폼을 기계적으로 채우는 봇만 값을 넣는다.
+/// </summary>
 public record CreateInquiryRequest(
     string Name,
     string Email,
@@ -14,7 +18,8 @@ public record CreateInquiryRequest(
     string? Category,
     string Title,
     string Message,
-    bool PrivacyConsent);
+    bool PrivacyConsent,
+    string? Website = null);
 
 /// <summary>관리자 문의 목록 항목 (A-02)</summary>
 public record InquiryListItem(
@@ -54,14 +59,34 @@ public record UpdateInquiryRequest(string? Status, string? AssignedAdminId, stri
 
 public static class InquiryEndpoints
 {
+  /// <summary>공개 문의 제출에 적용할 Rate Limit 정책명 — 등록은 Program.cs에서 한다. (F-INQ-01)</summary>
+  public const string RateLimitPolicy = "inquiry";
+
+  /// <summary>IP당 허용 제출 건수 — 정상 이용자가 걸리지 않을 만큼 넉넉하게 둔다.</summary>
+  public const int RateLimitPermitLimit = 5;
+
+  /// <summary>허용 건수를 세는 창 길이.</summary>
+  public static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(10);
+
   public static IEndpointRouteBuilder MapInquiryEndpoints(this IEndpointRouteBuilder app)
   {
     // 공개: 문의 제출 (F-INQ-01/02)
     app.MapPost("/api/inquiries", async (
         CreateInquiryRequest req,
         ApplicationDbContext db,
-        HttpContext http) =>
+        HttpContext http,
+        ILoggerFactory loggerFactory) =>
     {
+      // 허니팟 — 숨김 필드가 채워져 있으면 봇으로 간주한다.
+      // 저장하지 않되 정상 접수와 같은 응답을 돌려준다. 거절을 알려주면 어느 필드가 덫인지
+      // 학습해 우회하므로, 봇 입장에서는 성공한 것처럼 보이게 두는 편이 낫다.
+      if (!string.IsNullOrWhiteSpace(req.Website))
+      {
+        loggerFactory.CreateLogger("InquiryEndpoints").LogWarning(
+            "문의 허니팟 감지 — 저장하지 않음: {Ip}", http.Connection.RemoteIpAddress);
+        return Results.Created("/api/inquiries", new { Id = 0 });
+      }
+
       if (string.IsNullOrWhiteSpace(req.Name) ||
               string.IsNullOrWhiteSpace(req.Email) ||
               string.IsNullOrWhiteSpace(req.Title) ||
@@ -100,7 +125,7 @@ public static class InquiryEndpoints
 
       // TODO(M2): 담당자 이메일 알림(F-INQ-03), email_logs 기록
       return Results.Created($"/api/inquiries/{inquiry.Id}", new { inquiry.Id });
-    });
+    }).RequireRateLimiting(RateLimitPolicy);
 
     // 관리자 문의 관리 그룹 (A-02/A-03) — admin 역할만
     var admin = app.MapGroup("/api/admin/inquiries")

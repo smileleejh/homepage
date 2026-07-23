@@ -26,6 +26,7 @@ export default function ContactPage() {
           title: form.get("title"),
           message: form.get("message"),
           privacyConsent: form.get("privacyConsent") === "on",
+          website: form.get("website"),
         }),
       });
       router.push("/contact/complete");
@@ -48,6 +49,17 @@ export default function ContactPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="card mt-10 space-y-4">
+        {/* 허니팟 — 사람에게는 보이지 않는 덫. 값이 채워져 오면 서버가 봇으로 보고 접수하지 않는다. (F-INQ-01)
+            display:none 대신 화면 밖으로 밀어내고, aria-hidden·tabIndex로 보조기기와 키보드 이동에서도 뺀다.
+            자동완성이 잘못 채우면 정상 문의가 조용히 버려지므로 autoComplete은 반드시 끈다. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-[9999px] h-0 w-0 overflow-hidden"
+        >
+          <label htmlFor="website">홈페이지 (입력하지 마세요)</label>
+          <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <input name="name" required placeholder="이름 *" className="field" />
           <input
