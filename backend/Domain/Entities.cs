@@ -98,6 +98,7 @@ public class PageContent
   public string Key { get; set; } = string.Empty;   // 위치 식별자 (유니크): greeting, main_banner, notice ...
   public string? Title { get; set; }
   public string Body { get; set; } = string.Empty;
+  public bool IsVisible { get; set; } = true;        // 공개 페이지 노출 여부 (예: 홈 공지 on/off)
 
   public string? UpdatedById { get; set; }
   public ApplicationUser? UpdatedBy { get; set; }

@@ -49,6 +49,23 @@ public static class DbSeeder
     }
     await db.SaveChangesAsync();
 
+    // 2.5) CMS 편집 콘텐츠(page_contents) 멱등 생성 — 화이트리스트 키(인사말/배너/공지)
+    foreach (var def in PageContentKeys.All)
+    {
+      if (!await db.PageContents.AnyAsync(p => p.Key == def.Key))
+      {
+        db.PageContents.Add(new PageContent
+        {
+          Key = def.Key,
+          Title = def.DefaultTitle,
+          Body = def.DefaultBody,
+          IsVisible = def.DefaultVisible,
+        });
+        logger.LogInformation("CMS 콘텐츠 생성: {Key}", def.Key);
+      }
+    }
+    await db.SaveChangesAsync();
+
     // 3) 부트스트랩 관리자 멱등 생성 (설정값이 있을 때만)
     var adminEmail = config["Seed:AdminEmail"];
     var adminPassword = config["Seed:AdminPassword"];

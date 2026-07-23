@@ -97,6 +97,18 @@ app.MapCommentEndpoints();
 // 게시판 첨부파일 엔드포인트 (업로드/목록/다운로드/삭제)
 app.MapAttachmentEndpoints();
 
+// 관리자: 회원 관리 (목록/상태·권한 변경)
+app.MapMemberEndpoints();
+
+// 관리자: 게시판 카테고리 관리 (생성/수정/삭제)
+app.MapCategoryEndpoints();
+
+// 관리자: 게시글·댓글 모더레이션 (목록/삭제/복구/공지고정)
+app.MapModerationEndpoints();
+
+// CMS 콘텐츠: 공개 조회 + 관리자 편집 (하이브리드 CMS)
+app.MapContentEndpoints();
+
 // 시작 시 역할·부트스트랩 관리자 시드 (마이그레이션 적용 후 테이블 존재 전제)
 using (var scope = app.Services.CreateScope())
 {

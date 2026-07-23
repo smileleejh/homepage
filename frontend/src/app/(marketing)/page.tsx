@@ -1,8 +1,24 @@
 import Link from "next/link";
 import AuthedCta from "./_components/AuthedCta";
+import HeroCarousel from "./_components/HeroCarousel";
+import { getContent } from "@/lib/content";
+
+// ISR: 60초마다 재생성하여 관리자 CMS 편집(배너·공지)을 반영
+export const revalidate = 60;
 
 // P-01 메인/홈 — 배경 이미지 히어로 + 특징 섹션 + CTA 밴드
-export default function HomePage() {
+export default async function HomePage() {
+  // 관리자 편집 영역(CMS): 메인 배너 문구 + 홈 공지. 실패 시 기본 문구로 폴백.
+  const [banner, notice] = await Promise.all([
+    getContent("main_banner"),
+    getContent("notice"),
+  ]);
+  const heroText =
+    (banner?.isVisible && banner.body) ||
+    "회사 소개부터 고객 문의, 직원 전용 사내 협업까지 — 신뢰할 수 있는 하나의 플랫폼에서 시작하세요.";
+  // 공지는 노출 플래그가 켜지고 본문이 있을 때만 배너로 노출
+  const showNotice = Boolean(notice?.isVisible && notice.body?.trim());
+
   // 특징 카드 데이터 (아이콘은 인라인 SVG)
   const features = [
     {
@@ -30,47 +46,29 @@ export default function HomePage() {
 
   return (
     <>
-      {/* ===== 히어로 ===== */}
-      <section className="relative w-full overflow-hidden">
-        {/* 배경 사진 */}
-        <div
-          className="absolute inset-0 scale-105 bg-cover bg-center"
-          style={{ backgroundImage: "url('/hero.jpg')" }}
-        />
-        {/* 가독성용 그라디언트 오버레이 */}
-        <div className="absolute inset-0 bg-linear-to-r from-slate-950/90 via-slate-900/70 to-slate-900/25" />
-        <div className="absolute inset-0 bg-linear-to-t from-slate-950/70 to-transparent" />
-
-        <div className="relative mx-auto flex min-h-[88vh] max-w-6xl flex-col justify-center px-6 py-24">
-          <span className="eyebrow text-indigo-300">Business Solutions</span>
-          <h1 className="mt-5 max-w-2xl text-4xl font-extrabold leading-[1.15] text-white sm:text-5xl lg:text-6xl">
-            비즈니스의 성장을
-            <br />
-            함께 만드는 파트너
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-200">
-            회사 소개부터 고객 문의, 직원 전용 사내 협업까지 — 신뢰할 수 있는 하나의
-            플랫폼에서 시작하세요.
+      {/* ===== 공지 배너 (CMS: notice — 노출 플래그 ON + 본문 있을 때만) ===== */}
+      {showNotice && (
+        <div className="bg-linear-to-r from-indigo-600 to-violet-600 px-6 py-2.5 text-white">
+          <p className="mx-auto flex max-w-6xl items-center justify-center gap-2 text-center text-sm font-medium">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 shrink-0"
+              aria-hidden
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {notice?.body}
           </p>
-          <div className="mt-10 flex flex-wrap gap-4">
-            <Link href="/contact" className="btn btn-accent">
-              문의하기
-              <span aria-hidden>→</span>
-            </Link>
-            <Link href="/about" className="btn btn-glass">
-              회사 소개 보기
-            </Link>
-          </div>
-
-          {/* 캐러셀 도트 (장식) */}
-          <div className="mt-16 flex items-center gap-2">
-            <span className="h-2 w-8 rounded-full bg-white" />
-            <span className="h-2 w-2 rounded-full bg-white/40" />
-            <span className="h-2 w-2 rounded-full bg-white/40" />
-            <span className="h-2 w-2 rounded-full bg-white/40" />
-          </div>
         </div>
-      </section>
+      )}
+
+      {/* ===== 히어로 캐러셀 (스와이프·자동전환) ===== */}
+      <HeroCarousel bannerText={heroText} />
 
       {/* ===== 특징 섹션 ===== */}
       <section className="mx-auto max-w-6xl px-6 py-24">

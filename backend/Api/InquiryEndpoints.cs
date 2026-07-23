@@ -1,5 +1,6 @@
 using backend.Data;
 using backend.Domain;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api;
@@ -15,14 +16,41 @@ public record CreateInquiryRequest(
     string Message,
     bool PrivacyConsent);
 
-/// <summary>관리자 문의 목록 항목</summary>
+/// <summary>관리자 문의 목록 항목 (A-02)</summary>
 public record InquiryListItem(
     int Id,
     string Name,
     string Email,
     string Title,
     string Status,
+    string? AssignedAdminName,
     DateTimeOffset CreatedAt);
+
+/// <summary>관리자 문의 상세 (A-03)</summary>
+public record InquiryDetail(
+    int Id,
+    string Name,
+    string Email,
+    string? Company,
+    string? Phone,
+    string? Category,
+    string Title,
+    string Message,
+    string Status,
+    string? AssignedAdminId,
+    string? AssignedAdminName,
+    string? AdminMemo,
+    bool PrivacyConsent,
+    string? CreatedIp,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+/// <summary>
+/// 문의 상태·담당자·메모 변경 요청 (A-03 / F-INQ-05).
+/// 각 필드는 null이면 "변경 안 함"으로 간주하는 부분 수정(PATCH) 의미를 가진다.
+/// AssignedAdminId·AdminMemo에 빈 문자열("")을 보내면 해당 값을 비운다(담당자 해제/메모 삭제).
+/// </summary>
+public record UpdateInquiryRequest(string? Status, string? AssignedAdminId, string? AdminMemo);
 
 public static class InquiryEndpoints
 {
@@ -74,18 +102,131 @@ public static class InquiryEndpoints
       return Results.Created($"/api/inquiries/{inquiry.Id}", new { inquiry.Id });
     });
 
-    // 관리자: 문의 목록 (F-INQ-04) — admin 역할만
-    app.MapGet("/api/admin/inquiries", async (ApplicationDbContext db) =>
+    // 관리자 문의 관리 그룹 (A-02/A-03) — admin 역할만
+    var admin = app.MapGroup("/api/admin/inquiries")
+        .RequireAuthorization(policy => policy.RequireRole(DbSeeder.AdminRole));
+
+    // 목록/검색 (F-INQ-04) — 상태·기간·키워드 필터
+    admin.MapGet("/", async (
+        string? status, string? q, DateTimeOffset? from, DateTimeOffset? to,
+        ApplicationDbContext db) =>
     {
-      var items = await db.Inquiries
-              .OrderByDescending(i => i.CreatedAt)
-              .Select(i => new InquiryListItem(
-                  i.Id, i.Name, i.Email, i.Title, i.Status.ToString(), i.CreatedAt))
-              .ToListAsync();
+      var query = db.Inquiries.AsQueryable();
+
+      // 상태 필터
+      if (!string.IsNullOrWhiteSpace(status) &&
+          Enum.TryParse<InquiryStatus>(status, true, out var st) && Enum.IsDefined(st))
+      {
+        query = query.Where(i => i.Status == st);
+      }
+
+      // 기간 필터 (접수일 기준)
+      if (from is not null)
+      {
+        query = query.Where(i => i.CreatedAt >= from.Value);
+      }
+      if (to is not null)
+      {
+        query = query.Where(i => i.CreatedAt <= to.Value);
+      }
+
+      // 키워드(이름·이메일·제목·내용) — 대소문자 무시
+      if (!string.IsNullOrWhiteSpace(q))
+      {
+        var term = q.Trim().ToLower();
+        query = query.Where(i =>
+            i.Name.ToLower().Contains(term) ||
+            i.Email.ToLower().Contains(term) ||
+            i.Title.ToLower().Contains(term) ||
+            i.Message.ToLower().Contains(term));
+      }
+
+      var items = await query
+          .OrderByDescending(i => i.CreatedAt)
+          .Select(i => new InquiryListItem(
+              i.Id, i.Name, i.Email, i.Title, i.Status.ToString(),
+              i.AssignedAdmin != null ? i.AssignedAdmin.Name : null, i.CreatedAt))
+          .ToListAsync();
 
       return Results.Ok(items);
-    })
-    .RequireAuthorization(policy => policy.RequireRole(DbSeeder.AdminRole));
+    });
+
+    // 상세 (A-03)
+    admin.MapGet("/{id:int}", async (int id, ApplicationDbContext db) =>
+    {
+      var inquiry = await db.Inquiries
+          .Include(i => i.AssignedAdmin)
+          .FirstOrDefaultAsync(i => i.Id == id);
+      if (inquiry is null)
+      {
+        return Results.NotFound();
+      }
+
+      return Results.Ok(new InquiryDetail(
+          inquiry.Id, inquiry.Name, inquiry.Email, inquiry.Company, inquiry.Phone,
+          inquiry.Category, inquiry.Title, inquiry.Message, inquiry.Status.ToString(),
+          inquiry.AssignedAdminId, inquiry.AssignedAdmin?.Name, inquiry.AdminMemo,
+          inquiry.PrivacyConsent, inquiry.CreatedIp, inquiry.CreatedAt, inquiry.UpdatedAt));
+    });
+
+    // 상태/담당자/메모 변경 (F-INQ-05)
+    admin.MapPatch("/{id:int}", async (
+        int id,
+        UpdateInquiryRequest req,
+        ApplicationDbContext db,
+        UserManager<ApplicationUser> userManager) =>
+    {
+      var inquiry = await db.Inquiries.FirstOrDefaultAsync(i => i.Id == id);
+      if (inquiry is null)
+      {
+        return Results.NotFound();
+      }
+
+      // 상태 전환 (received → in_progress → done)
+      if (!string.IsNullOrWhiteSpace(req.Status))
+      {
+        if (!Enum.TryParse<InquiryStatus>(req.Status, true, out var st) || !Enum.IsDefined(st))
+        {
+          return Results.ValidationProblem(new Dictionary<string, string[]>
+          {
+            ["status"] = ["유효한 문의 상태가 아닙니다. (Received / InProgress / Done)"],
+          });
+        }
+        inquiry.Status = st;
+      }
+
+      // 담당자 지정/해제 — 빈 문자열이면 해제, 값이 있으면 admin 역할 사용자만 허용
+      if (req.AssignedAdminId is not null)
+      {
+        if (req.AssignedAdminId.Length == 0)
+        {
+          inquiry.AssignedAdminId = null;
+        }
+        else
+        {
+          var assignee = await userManager.FindByIdAsync(req.AssignedAdminId);
+          if (assignee is null || !await userManager.IsInRoleAsync(assignee, DbSeeder.AdminRole))
+          {
+            return Results.ValidationProblem(new Dictionary<string, string[]>
+            {
+              ["assignedAdminId"] = ["담당자는 관리자 계정만 지정할 수 있습니다."],
+            });
+          }
+          inquiry.AssignedAdminId = assignee.Id;
+        }
+      }
+
+      // 내부 메모 — 빈 문자열이면 삭제
+      if (req.AdminMemo is not null)
+      {
+        inquiry.AdminMemo = string.IsNullOrWhiteSpace(req.AdminMemo) ? null : req.AdminMemo;
+      }
+
+      inquiry.UpdatedAt = DateTimeOffset.UtcNow;
+      await db.SaveChangesAsync();
+
+      return Results.NoContent();
+    });
 
     return app;
   }
