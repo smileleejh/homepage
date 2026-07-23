@@ -13,21 +13,6 @@ type Category = {
   createdAt: string;
 };
 
-// 검증 오류(ProblemDetails) 응답에서 첫 메시지를 뽑아 사용자에게 노출
-function firstErrorMessage(raw: string, fallback: string): string {
-  try {
-    const body = JSON.parse(raw);
-    const errors = body?.errors as Record<string, string[]> | undefined;
-    if (errors) {
-      const first = Object.values(errors)[0];
-      if (first?.[0]) return first[0];
-    }
-  } catch {
-    // JSON 아님 — fallback
-  }
-  return fallback;
-}
-
 export default function AdminCategoriesPage() {
   const [items, setItems] = useState<Category[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,7 +72,7 @@ export default function AdminCategoriesPage() {
       await load();
     } catch (err) {
       window.alert(
-        firstErrorMessage(err instanceof Error ? err.message : "", "생성에 실패했습니다."),
+        err instanceof Error ? err.message : "생성에 실패했습니다.",
       );
     } finally {
       setCreating(false);
@@ -116,7 +101,7 @@ export default function AdminCategoriesPage() {
       await load();
     } catch (err) {
       window.alert(
-        firstErrorMessage(err instanceof Error ? err.message : "", "수정에 실패했습니다."),
+        err instanceof Error ? err.message : "수정에 실패했습니다.",
       );
     }
   }
@@ -128,7 +113,7 @@ export default function AdminCategoriesPage() {
       await load();
     } catch (err) {
       window.alert(
-        firstErrorMessage(err instanceof Error ? err.message : "", "삭제에 실패했습니다."),
+        err instanceof Error ? err.message : "삭제에 실패했습니다.",
       );
     }
   }

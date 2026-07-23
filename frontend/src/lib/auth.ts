@@ -31,7 +31,10 @@ export function useIsAdmin(): boolean {
 
   useEffect(() => {
     let active = true;
-    apiFetch<{ email: string; roles: string[] }>("auth/me")
+    // 공개 페이지(SiteHeader)에서도 호출되는 프로브 — 401이어도 로그인으로 보내지 않는다
+    apiFetch<{ email: string; roles: string[] }>("auth/me", undefined, {
+      redirectOnUnauthorized: false,
+    })
       .then((me) => {
         if (active && me) setIsAdmin(me.roles?.includes("admin") ?? false);
       })
