@@ -172,7 +172,7 @@ export default function AdminCategoriesPage() {
 
       {/* 목록 */}
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-160 text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-xs font-semibold uppercase tracking-wider text-slate-400">
               <th className="w-20 px-5 py-3 text-center">정렬</th>
