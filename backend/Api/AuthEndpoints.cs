@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using backend.Data;
@@ -10,6 +11,20 @@ namespace backend.Api;
 
 /// <summary>직원 회원가입 요청 (P-08)</summary>
 public record SignupRequest(string Email, string Password, string Name, string? Department);
+
+/// <summary>내 프로필 응답 (E-05)</summary>
+public record ProfileResponse(
+    string Email,
+    string Name,
+    string? Department,
+    string Status,
+    IReadOnlyList<string> Roles);
+
+/// <summary>프로필(이름·부서) 수정 요청 (E-05)</summary>
+public record UpdateProfileRequest(string Name, string? Department);
+
+/// <summary>비밀번호 변경 요청 (E-05)</summary>
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
 /// <summary>
 /// 가입 폼에 표시할 규칙 (P-08).
@@ -116,6 +131,101 @@ public static class AuthEndpoints
       await emailSender.SendConfirmationLinkAsync(user, req.Email, HtmlEncoder.Default.Encode(confirmUrl));
 
       return Results.Ok(new { message = "가입 신청이 완료되었습니다. 이메일 인증 후 로그인하세요." });
+    });
+
+    // 내 프로필 그룹 (E-05) — 로그인 사용자 본인
+    var profile = app.MapGroup("/api/auth/profile").RequireAuthorization();
+
+    // 프로필 조회 — 폼 초기값(이름·부서·이메일)
+    profile.MapGet("/", async (
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal principal) =>
+    {
+      var user = await userManager.GetUserAsync(principal);
+      if (user is null)
+      {
+        return Results.NotFound();
+      }
+
+      var roles = await userManager.GetRolesAsync(user);
+      return Results.Ok(new ProfileResponse(
+          user.Email ?? "", user.Name, user.Department, user.Status.ToString(), roles.ToList()));
+    });
+
+    // 프로필 수정 — 이름·부서만. 이메일·상태·역할은 여기서 바꿀 수 없다.
+    profile.MapPut("/", async (
+        UpdateProfileRequest req,
+        UserManager<ApplicationUser> userManager,
+        ClaimsPrincipal principal) =>
+    {
+      if (string.IsNullOrWhiteSpace(req.Name))
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["name"] = ["이름은 필수입니다."],
+        });
+      }
+
+      var user = await userManager.GetUserAsync(principal);
+      if (user is null)
+      {
+        return Results.NotFound();
+      }
+
+      user.Name = req.Name.Trim();
+      // 빈 문자열은 "부서 없음"으로 저장한다(공백만 입력한 경우 포함)
+      user.Department = string.IsNullOrWhiteSpace(req.Department) ? null : req.Department.Trim();
+      user.UpdatedAt = DateTimeOffset.UtcNow;
+
+      var result = await userManager.UpdateAsync(user);
+      if (!result.Succeeded)
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["identity"] = result.Errors.Select(e => e.Description).ToArray(),
+        });
+      }
+
+      return Results.NoContent();
+    });
+
+    // 비밀번호 변경 — 현재 비밀번호 확인 후 교체
+    profile.MapPost("/password", async (
+        ChangePasswordRequest req,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        ClaimsPrincipal principal) =>
+    {
+      if (string.IsNullOrWhiteSpace(req.CurrentPassword) || string.IsNullOrWhiteSpace(req.NewPassword))
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["required"] = ["현재 비밀번호와 새 비밀번호를 모두 입력하세요."],
+        });
+      }
+
+      var user = await userManager.GetUserAsync(principal);
+      if (user is null)
+      {
+        return Results.NotFound();
+      }
+
+      // ChangePasswordAsync는 현재 비밀번호를 검증하고, 성공 시 보안 스탬프를 갱신한다
+      var result = await userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
+      if (!result.Succeeded)
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          // 현재 비밀번호 불일치·새 비밀번호 정책 위반 등 Identity 사유를 그대로 전달
+          ["password"] = result.Errors.Select(e => e.Description).ToArray(),
+        });
+      }
+
+      // 보안 스탬프가 바뀌면 현재 쿠키 세션도 곧 무효화된다 — 재로그인시켜 세션을 유지한다
+      // (그렇지 않으면 비밀번호를 바꾼 본인이 다음 요청에서 로그아웃된다)
+      await signInManager.RefreshSignInAsync(user);
+
+      return Results.NoContent();
     });
 
     return app;
