@@ -130,13 +130,61 @@ public static class AuthEndpoints
         });
       }
 
-      // 5) 이메일 인증 링크 발송 (Identity confirmEmail 과 동일한 토큰 형식)
+      // 5) 이메일 인증 링크 발송
+      // 링크는 프론트 오리진(BFF)의 confirm-email 로 향한다 — BFF가 백엔드로 프록시하고,
+      // 백엔드가 인증 처리 후 프론트 결과 페이지(/verify-email)로 리다이렉트한다.
+      // 백엔드 호스트를 직접 가리키면 BFF 배포에서 브라우저가 닿지 못하므로 프론트 주소를 쓴다.
       var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
       var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-      var confirmUrl = $"{http.Request.Scheme}://{http.Request.Host}/api/auth/confirmEmail?userId={user.Id}&code={code}";
+      var frontendBaseUrl = (config["Frontend:BaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+      var confirmUrl = $"{frontendBaseUrl}/api/auth/confirm-email?userId={user.Id}&code={code}";
       await emailSender.SendConfirmationLinkAsync(user, req.Email, HtmlEncoder.Default.Encode(confirmUrl));
 
       return Results.Ok(new { message = "가입 신청이 완료되었습니다. 이메일 인증 후 로그인하세요." });
+    });
+
+    // 이메일 인증 링크 처리 (F-AUTH-02) — 확인 후 프론트 결과 페이지로 리다이렉트한다.
+    // 메일의 링크가 BFF(/api/*)를 거쳐 여기 도달하고, 처리 결과를 status 쿼리로 담아
+    // {Frontend:BaseUrl}/verify-email 로 302 리다이렉트한다(사용자는 스타일된 결과 화면을 본다).
+    app.MapGet("/api/auth/confirm-email", async (
+        string? userId,
+        string? code,
+        UserManager<ApplicationUser> userManager,
+        IConfiguration config) =>
+    {
+      var baseUrl = (config["Frontend:BaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+      string resultUrl(string status) => $"{baseUrl}/verify-email?status={status}";
+
+      if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(code))
+      {
+        return Results.Redirect(resultUrl("invalid"));
+      }
+
+      var user = await userManager.FindByIdAsync(userId);
+      if (user is null)
+      {
+        return Results.Redirect(resultUrl("invalid"));
+      }
+
+      // 이미 인증된 계정이면 링크를 다시 눌러도 안내만 한다(중복 클릭)
+      if (user.EmailConfirmed)
+      {
+        return Results.Redirect(resultUrl("already"));
+      }
+
+      string token;
+      try
+      {
+        token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+      }
+      catch (FormatException)
+      {
+        return Results.Redirect(resultUrl("invalid"));
+      }
+
+      // ConfirmEmailAsync는 ApplicationUserManager 재정의로 Pending→Active 승격까지 처리한다
+      var result = await userManager.ConfirmEmailAsync(user, token);
+      return Results.Redirect(resultUrl(result.Succeeded ? "success" : "invalid"));
     });
 
     // 비밀번호 재설정 링크 요청 (F-AUTH-05)
