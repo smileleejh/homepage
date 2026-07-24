@@ -153,12 +153,23 @@ app.MapPost("/api/auth/logout", async (SignInManager<ApplicationUser> signInMana
   return Results.Ok();
 }).RequireAuthorization();
 
-// 현재 로그인 사용자 정보
-app.MapGet("/api/auth/me", (ClaimsPrincipal user) => Results.Ok(new
+// 현재 로그인 사용자 정보 (UI 프로브) — 공개 페이지의 헤더/CTA가 로그인 여부를 확인한다.
+// 인증을 요구하면 비로그인 시 401을 내는데, "로그인 안 됨"은 오류가 아니라 정상 상태다.
+// 401은 브라우저 콘솔에 오류로 찍히므로, 익명도 200으로 받고 인증 여부를 본문에 담아 알려준다.
+app.MapGet("/api/auth/me", (ClaimsPrincipal user) =>
 {
-  email = user.FindFirstValue(ClaimTypes.Email) ?? user.Identity?.Name,
-  roles = user.FindAll(ClaimTypes.Role).Select(r => r.Value)
-})).RequireAuthorization();
+  if (user.Identity?.IsAuthenticated != true)
+  {
+    return Results.Ok(new { authenticated = false });
+  }
+
+  return Results.Ok(new
+  {
+    authenticated = true,
+    email = user.FindFirstValue(ClaimTypes.Email) ?? user.Identity?.Name,
+    roles = user.FindAll(ClaimTypes.Role).Select(r => r.Value),
+  });
+});
 
 // 헬스체크
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
