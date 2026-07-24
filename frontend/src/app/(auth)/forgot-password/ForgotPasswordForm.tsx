@@ -64,11 +64,13 @@ export default function ForgotPasswordForm() {
           name="email"
           type="email"
           required
+          aria-label="회사 이메일"
+          autoComplete="email"
           placeholder="회사 이메일"
           className="field"
         />
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
         <button type="submit" disabled={loading} className="btn btn-accent w-full">
           {loading ? "전송 중…" : "재설정 링크 받기"}

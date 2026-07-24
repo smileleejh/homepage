@@ -97,6 +97,7 @@ export default function AdminInquiriesPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            aria-label="문의 검색 (이름·이메일·제목·내용)"
             placeholder="이름·이메일·제목·내용 검색"
             className="field min-w-0 flex-1"
           />
@@ -128,7 +129,7 @@ export default function AdminInquiriesPage() {
         </div>
 
         {error ? (
-          <p className="px-6 py-16 text-center text-sm text-red-600">{error}</p>
+          <p role="alert" className="px-6 py-16 text-center text-sm text-red-600">{error}</p>
         ) : items === null ? (
           <p className="px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</p>
         ) : items.length === 0 ? (

@@ -170,6 +170,7 @@ export default function ProfilePage() {
 
         {infoNotice && (
           <p
+            role={infoNotice.kind === "success" ? "status" : "alert"}
             className={`text-sm ${
               infoNotice.kind === "success" ? "text-green-700" : "text-red-600"
             }`}
@@ -242,6 +243,7 @@ export default function ProfilePage() {
 
         {passwordNotice && (
           <p
+            role={passwordNotice.kind === "success" ? "status" : "alert"}
             className={`text-sm ${
               passwordNotice.kind === "success" ? "text-green-700" : "text-red-600"
             }`}

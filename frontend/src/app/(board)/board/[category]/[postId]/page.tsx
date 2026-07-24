@@ -75,7 +75,7 @@ export default function PostDetailPage() {
 
       {error ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-sm">
-          <p className="text-sm text-red-600">{error}</p>
+          <p role="alert" className="text-sm text-red-600">{error}</p>
           <Link href={`/board/${category}`} className="btn btn-outline mt-6 px-5! py-2.5!">
             ← 목록으로
           </Link>

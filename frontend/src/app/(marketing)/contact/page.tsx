@@ -61,21 +61,23 @@ export default function ContactPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <input name="name" required placeholder="이름 *" className="field" />
+          <input name="name" required aria-label="이름 (필수)" placeholder="이름 *" className="field" />
           <input
             name="email"
             type="email"
             required
+            aria-label="이메일 (필수)"
             placeholder="이메일 *"
             className="field"
           />
-          <input name="company" placeholder="회사명 (선택)" className="field" />
-          <input name="phone" placeholder="연락처 (선택)" className="field" />
+          <input name="company" aria-label="회사명 (선택)" placeholder="회사명 (선택)" className="field" />
+          <input name="phone" aria-label="연락처 (선택)" placeholder="연락처 (선택)" className="field" />
         </div>
-        <input name="title" required placeholder="제목 *" className="field" />
+        <input name="title" required aria-label="제목 (필수)" placeholder="제목 *" className="field" />
         <textarea
           name="message"
           required
+          aria-label="문의 내용 (필수)"
           placeholder="문의 내용 *"
           rows={5}
           className="field resize-none"
@@ -90,7 +92,7 @@ export default function ContactPage() {
           개인정보 수집·이용에 동의합니다.
         </label>
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
         <button
           type="submit"

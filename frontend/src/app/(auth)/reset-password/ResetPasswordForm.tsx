@@ -89,6 +89,7 @@ export default function ResetPasswordForm() {
           type="password"
           autoComplete="new-password"
           required
+          aria-label="새 비밀번호"
           placeholder="새 비밀번호"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -98,13 +99,14 @@ export default function ResetPasswordForm() {
           type="password"
           autoComplete="new-password"
           required
+          aria-label="새 비밀번호 확인"
           placeholder="새 비밀번호 확인"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           className="field"
         />
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
         <button type="submit" disabled={loading} className="btn btn-accent w-full">
           {loading ? "변경 중…" : "비밀번호 변경"}

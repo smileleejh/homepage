@@ -181,6 +181,7 @@ export default function AdminPostsPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            aria-label={tab === "posts" ? "게시글 검색 (제목·작성자)" : "댓글 검색 (내용·작성자)"}
             placeholder={tab === "posts" ? "제목·작성자 검색" : "내용·작성자 검색"}
             className="field min-w-0 flex-1"
           />
@@ -203,7 +204,7 @@ export default function AdminPostsPage() {
       </div>
 
       {error && (
-        <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </p>
       )}

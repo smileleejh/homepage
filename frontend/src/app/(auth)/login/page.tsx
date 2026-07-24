@@ -66,6 +66,8 @@ export default function LoginPage() {
           name="email"
           type="email"
           required
+          aria-label="회사 이메일"
+          autoComplete="email"
           placeholder="회사 이메일"
           className="field"
         />
@@ -73,11 +75,13 @@ export default function LoginPage() {
           name="password"
           type="password"
           required
+          aria-label="비밀번호"
+          autoComplete="current-password"
           placeholder="비밀번호"
           className="field"
         />
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
         <button type="submit" disabled={loading} className="btn btn-accent w-full">
           {loading ? "로그인 중…" : "로그인"}

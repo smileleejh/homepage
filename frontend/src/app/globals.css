@@ -16,6 +16,19 @@
   html {
     scroll-behavior: smooth;
   }
+  /* 감속 모션 선호 사용자: 애니메이션·트랜지션·부드러운 스크롤을 사실상 제거 */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
   body {
     /* 진한 본문 색으로 가독성 확보(옅은 회색 텍스트 문제 해결) */
     @apply bg-white text-slate-700 antialiased;
@@ -36,7 +49,7 @@
 @layer components {
   /* 버튼 — 알약형, 부드러운 호버 상승 효과 */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-semibold transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
     @apply bg-slate-900 text-white shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 hover:bg-slate-800;
@@ -58,7 +71,7 @@
 
   /* 폼 입력 — 포커스 시 인디고 링 */
   .field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/10;
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-slate-900 placeholder-slate-400 transition focus:border-indigo-500 focus:outline-none focus:ring-4 focus:ring-indigo-500/25;
   }
 
   /* 보조 라벨(섹션 상단 소제목) */

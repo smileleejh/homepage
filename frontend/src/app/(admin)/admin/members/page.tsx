@@ -153,6 +153,7 @@ export default function AdminMembersPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            aria-label="회원 검색 (이름·이메일)"
             placeholder="이름·이메일 검색"
             className="field min-w-0 flex-1"
           />
@@ -212,6 +213,7 @@ export default function AdminMembersPage() {
                       <select
                         value={m.status}
                         onChange={(e) => patchMember(m, { status: e.target.value })}
+                        aria-label={`${m.name} 상태 변경`}
                         className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
                       >
                         <option value="Pending">미인증</option>
@@ -224,6 +226,7 @@ export default function AdminMembersPage() {
                     <select
                       value={roleOf(m)}
                       onChange={(e) => patchMember(m, { role: e.target.value })}
+                      aria-label={`${m.name} 권한 변경`}
                       className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-700"
                     >
                       <option value="employee">직원</option>

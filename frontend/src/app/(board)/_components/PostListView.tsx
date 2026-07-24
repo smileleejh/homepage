@@ -193,7 +193,7 @@ export default function PostListView({
         onSubmit={handleSearch}
         className="flex flex-wrap items-center gap-2"
       >
-        <select name="field" defaultValue={field} className="field w-auto shrink-0">
+        <select name="field" defaultValue={field} aria-label="검색 대상" className="field w-auto shrink-0">
           {SEARCH_FIELDS.map((f) => (
             <option key={f.value} value={f.value}>
               {f.label}
@@ -203,6 +203,7 @@ export default function PostListView({
         <input
           name="q"
           defaultValue={q}
+          aria-label="검색어"
           placeholder="검색어를 입력하세요"
           className="field min-w-0 flex-1"
         />
@@ -227,7 +228,7 @@ export default function PostListView({
         </div>
 
         {error ? (
-          <p className="px-6 py-16 text-center text-sm text-red-600">{error}</p>
+          <p role="alert" className="px-6 py-16 text-center text-sm text-red-600">{error}</p>
         ) : data === null ? (
           <p className="px-6 py-16 text-center text-sm text-slate-400">불러오는 중…</p>
         ) : data.items.length === 0 ? (

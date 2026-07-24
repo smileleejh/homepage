@@ -134,8 +134,9 @@ export default function AdminCategoriesPage() {
         className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <div className="min-w-40 flex-1">
-          <label className="mb-1.5 block text-sm font-semibold text-slate-900">이름</label>
+          <label htmlFor="category-name" className="mb-1.5 block text-sm font-semibold text-slate-900">이름</label>
           <input
+            id="category-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="예: 자유게시판"
@@ -143,8 +144,9 @@ export default function AdminCategoriesPage() {
           />
         </div>
         <div className="min-w-40 flex-1">
-          <label className="mb-1.5 block text-sm font-semibold text-slate-900">슬러그</label>
+          <label htmlFor="category-slug" className="mb-1.5 block text-sm font-semibold text-slate-900">슬러그</label>
           <input
+            id="category-slug"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="예: free"
@@ -152,8 +154,9 @@ export default function AdminCategoriesPage() {
           />
         </div>
         <div className="w-28">
-          <label className="mb-1.5 block text-sm font-semibold text-slate-900">정렬</label>
+          <label htmlFor="category-sort" className="mb-1.5 block text-sm font-semibold text-slate-900">정렬</label>
           <input
+            id="category-sort"
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
             type="number"
@@ -210,6 +213,7 @@ export default function AdminCategoriesPage() {
                         value={editSort}
                         onChange={(e) => setEditSort(e.target.value)}
                         type="number"
+                        aria-label="정렬 순서"
                         className="field px-2! py-1.5! text-center"
                       />
                     </td>
@@ -217,6 +221,7 @@ export default function AdminCategoriesPage() {
                       <input
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
+                        aria-label="카테고리 이름"
                         className="field px-3! py-1.5!"
                       />
                     </td>
@@ -224,6 +229,7 @@ export default function AdminCategoriesPage() {
                       <input
                         value={editSlug}
                         onChange={(e) => setEditSlug(e.target.value)}
+                        aria-label="카테고리 슬러그"
                         className="field px-3! py-1.5!"
                       />
                     </td>

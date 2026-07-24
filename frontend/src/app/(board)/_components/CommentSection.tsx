@@ -114,6 +114,7 @@ export default function CommentSection({ postId }: { postId: string }) {
         <input
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          aria-label="댓글 내용"
           placeholder="댓글을 입력하세요"
           className="field"
         />
@@ -128,7 +129,7 @@ export default function CommentSection({ postId }: { postId: string }) {
 
       {/* 목록 */}
       {error ? (
-        <p className="mt-6 text-sm text-red-600">{error}</p>
+        <p role="alert" className="mt-6 text-sm text-red-600">{error}</p>
       ) : comments === null ? (
         <p className="mt-6 text-sm text-slate-400">불러오는 중…</p>
       ) : comments.length === 0 ? (

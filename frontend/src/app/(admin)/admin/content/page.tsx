@@ -107,7 +107,7 @@ export default function AdminContentPage() {
       </div>
 
       {error && (
-        <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <p role="alert" className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </p>
       )}
@@ -183,8 +183,9 @@ export default function AdminContentPage() {
                 )}
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-900">제목</label>
+                <label htmlFor="content-title" className="mb-1.5 block text-sm font-semibold text-slate-900">제목</label>
                 <input
+                  id="content-title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="제목(선택)"
@@ -192,8 +193,9 @@ export default function AdminContentPage() {
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-900">본문</label>
+                <label htmlFor="content-body" className="mb-1.5 block text-sm font-semibold text-slate-900">본문</label>
                 <textarea
+                  id="content-body"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={12}
@@ -215,7 +217,7 @@ export default function AdminContentPage() {
                   </span>
                 </label>
                 <div className="flex items-center gap-3">
-                  {saved && <span className="text-sm text-emerald-600">저장되었습니다.</span>}
+                  {saved && <span role="status" className="text-sm text-emerald-600">저장되었습니다.</span>}
                   <button
                     type="button"
                     onClick={handleSave}

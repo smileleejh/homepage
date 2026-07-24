@@ -182,6 +182,7 @@ export default function PostForm({
           <select
             name="categorySlug"
             required
+            aria-label="카테고리"
             className="field"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -198,6 +199,7 @@ export default function PostForm({
           <input
             name="title"
             required
+            aria-label="제목"
             placeholder="제목을 입력하세요"
             defaultValue={initialTitle}
             className="field"
@@ -207,6 +209,7 @@ export default function PostForm({
         <textarea
           name="body"
           required
+          aria-label="본문"
           placeholder="본문을 입력하세요"
           rows={12}
           defaultValue={initialBody}
@@ -250,7 +253,7 @@ export default function PostForm({
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
         )}
 
         <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">

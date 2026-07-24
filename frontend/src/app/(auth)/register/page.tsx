@@ -133,9 +133,9 @@ export default function RegisterPage() {
     <>
       <h1 className="text-2xl font-bold">회원가입</h1>
       <form onSubmit={onSubmit} className="space-y-3">
-        <input name="name" placeholder="이름" className="w-full rounded border p-2" />
-        <input name="department" placeholder="부서(선택)" className="w-full rounded border p-2" />
-        <input name="email" type="email" required placeholder="회사 이메일" className="w-full rounded border p-2" />
+        <input name="name" aria-label="이름" autoComplete="name" placeholder="이름" className="w-full rounded border p-2" />
+        <input name="department" aria-label="부서 (선택)" autoComplete="organization-title" placeholder="부서(선택)" className="w-full rounded border p-2" />
+        <input name="email" type="email" required aria-label="회사 이메일" autoComplete="email" placeholder="회사 이메일" className="w-full rounded border p-2" />
 
         {/* 허용 도메인 — 안내가 없으면 가입 실패 후에야 알게 된다 */}
         {policy && policy.allowedEmailDomains.length > 0 && (
@@ -151,6 +151,9 @@ export default function RegisterPage() {
           name="password"
           type="password"
           required
+          aria-label="비밀번호"
+          autoComplete="new-password"
+          aria-describedby="password-rules"
           placeholder="비밀번호"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -159,7 +162,7 @@ export default function RegisterPage() {
 
         {/* 비밀번호 조건 — 입력에 따라 충족 여부를 실시간 표시 */}
         {rules.length > 0 && (
-          <ul className="space-y-1 rounded border border-gray-200 bg-gray-50 p-3">
+          <ul id="password-rules" className="space-y-1 rounded border border-gray-200 bg-gray-50 p-3">
             {rules.map((rule) => (
               <li
                 key={rule.label}
@@ -175,7 +178,7 @@ export default function RegisterPage() {
           </ul>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
           disabled={loading}

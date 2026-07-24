@@ -120,7 +120,7 @@ export default function AdminInquiryDetailPage() {
 
       {error ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-16 text-center shadow-sm">
-          <p className="text-sm text-red-600">{error}</p>
+          <p role="alert" className="text-sm text-red-600">{error}</p>
           <Link href="/admin/inquiries" className="btn btn-outline mt-6 px-5! py-2.5!">
             ← 목록으로
           </Link>
@@ -154,8 +154,9 @@ export default function AdminInquiryDetailPage() {
             <h2 className="text-lg font-bold">처리</h2>
             <div className="mt-5 grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-900">상태</label>
+                <label htmlFor="inquiry-status" className="mb-1.5 block text-sm font-semibold text-slate-900">상태</label>
                 <select
+                  id="inquiry-status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
                   className="field"
@@ -168,8 +169,9 @@ export default function AdminInquiryDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-semibold text-slate-900">담당자</label>
+                <label htmlFor="inquiry-assignee" className="mb-1.5 block text-sm font-semibold text-slate-900">담당자</label>
                 <select
+                  id="inquiry-assignee"
                   value={assignedAdminId}
                   onChange={(e) => setAssignedAdminId(e.target.value)}
                   className="field"
@@ -184,10 +186,11 @@ export default function AdminInquiryDetailPage() {
               </div>
             </div>
             <div className="mt-5">
-              <label className="mb-1.5 block text-sm font-semibold text-slate-900">
+              <label htmlFor="inquiry-memo" className="mb-1.5 block text-sm font-semibold text-slate-900">
                 내부 메모
               </label>
               <textarea
+                id="inquiry-memo"
                 value={memo}
                 onChange={(e) => setMemo(e.target.value)}
                 rows={4}
@@ -196,7 +199,7 @@ export default function AdminInquiryDetailPage() {
               />
             </div>
             <div className="mt-5 flex items-center justify-end gap-3">
-              {saved && <span className="text-sm text-emerald-600">저장되었습니다.</span>}
+              {saved && <span role="status" className="text-sm text-emerald-600">저장되었습니다.</span>}
               <button
                 type="button"
                 onClick={handleSave}
