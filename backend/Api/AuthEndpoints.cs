@@ -26,6 +26,12 @@ public record UpdateProfileRequest(string Name, string? Department);
 /// <summary>비밀번호 변경 요청 (E-05)</summary>
 public record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
+/// <summary>비밀번호 재설정 요청 — 링크 발송 (P-10 / F-AUTH-05)</summary>
+public record ForgotPasswordRequest(string Email);
+
+/// <summary>비밀번호 재설정 실행 — 링크의 코드로 새 비밀번호 설정 (P-10 / F-AUTH-05)</summary>
+public record ResetPasswordRequest(string Email, string Code, string NewPassword);
+
 /// <summary>
 /// 가입 폼에 표시할 규칙 (P-08).
 /// 화면 문구를 하드코딩하면 서버 설정과 어긋나므로 실제 IdentityOptions·설정값을 그대로 내려준다.
@@ -131,6 +137,91 @@ public static class AuthEndpoints
       await emailSender.SendConfirmationLinkAsync(user, req.Email, HtmlEncoder.Default.Encode(confirmUrl));
 
       return Results.Ok(new { message = "가입 신청이 완료되었습니다. 이메일 인증 후 로그인하세요." });
+    });
+
+    // 비밀번호 재설정 링크 요청 (F-AUTH-05)
+    // 계정 존재 여부를 노출하지 않기 위해 어떤 입력에도 동일한 200을 돌려준다.
+    // 링크는 프론트 재설정 페이지(/reset-password)로 향한다 — confirmEmail(백엔드)과 달리
+    // 사용자가 새 비밀번호를 입력하는 화면이기 때문이다.
+    app.MapPost("/api/auth/forgot-password", async (
+        ForgotPasswordRequest req,
+        UserManager<ApplicationUser> userManager,
+        IEmailSender<ApplicationUser> emailSender,
+        IConfiguration config) =>
+    {
+      if (!string.IsNullOrWhiteSpace(req.Email))
+      {
+        var user = await userManager.FindByEmailAsync(req.Email);
+        // 이메일 인증을 마친 계정에만 보낸다(미인증 계정은 재설정 대상이 아니다)
+        if (user is not null && await userManager.IsEmailConfirmedAsync(user))
+        {
+          var token = await userManager.GeneratePasswordResetTokenAsync(user);
+          var code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+          var baseUrl = (config["Frontend:BaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+          var link = $"{baseUrl}/reset-password?email={Uri.EscapeDataString(req.Email)}&code={code}";
+          await emailSender.SendPasswordResetLinkAsync(user, req.Email, HtmlEncoder.Default.Encode(link));
+        }
+      }
+
+      return Results.Ok(new { message = "입력하신 이메일이 가입되어 있다면 재설정 링크를 보냈습니다." });
+    });
+
+    // 비밀번호 재설정 실행 (F-AUTH-05)
+    app.MapPost("/api/auth/reset-password", async (
+        ResetPasswordRequest req,
+        UserManager<ApplicationUser> userManager) =>
+    {
+      if (string.IsNullOrWhiteSpace(req.Email) ||
+          string.IsNullOrWhiteSpace(req.Code) ||
+          string.IsNullOrWhiteSpace(req.NewPassword))
+      {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["required"] = ["이메일·재설정 코드·새 비밀번호가 모두 필요합니다."],
+        });
+      }
+
+      // 계정 없음/미인증/코드 손상은 모두 "링크가 유효하지 않음"으로 묶는다(계정 노출 방지)
+      var invalidLink = new Dictionary<string, string[]>
+      {
+        ["code"] = ["재설정 링크가 유효하지 않거나 만료되었습니다. 다시 요청해 주세요."],
+      };
+
+      var user = await userManager.FindByEmailAsync(req.Email);
+      if (user is null || !await userManager.IsEmailConfirmedAsync(user))
+      {
+        return Results.ValidationProblem(invalidLink);
+      }
+
+      string token;
+      try
+      {
+        token = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(req.Code));
+      }
+      catch (FormatException)
+      {
+        return Results.ValidationProblem(invalidLink);
+      }
+
+      var result = await userManager.ResetPasswordAsync(user, token, req.NewPassword);
+      if (!result.Succeeded)
+      {
+        // 토큰 오류(만료·위조)와 비밀번호 정책 위반을 구분해 안내한다
+        if (result.Errors.Any(e => e.Code == "InvalidToken"))
+        {
+          return Results.ValidationProblem(invalidLink);
+        }
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+          ["password"] = result.Errors.Select(e => e.Description).ToArray(),
+        });
+      }
+
+      // 재설정 성공 — 실패 횟수로 잠겨 있었다면 함께 풀어 바로 로그인할 수 있게 한다
+      await userManager.ResetAccessFailedCountAsync(user);
+      await userManager.SetLockoutEndDateAsync(user, null);
+
+      return Results.Ok(new { message = "비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요." });
     });
 
     // 내 프로필 그룹 (E-05) — 로그인 사용자 본인
