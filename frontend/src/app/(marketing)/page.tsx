@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import AuthedCta from "./_components/AuthedCta";
 import HeroCarousel from "./_components/HeroCarousel";
 import { getContent } from "@/lib/content";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+
+// 홈은 브랜드명 자체가 title이 되도록 template을 쓰지 않고 절대 title로 지정한다
+export const metadata: Metadata = {
+  title: { absolute: SITE_NAME },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+};
 
 // ISR: 60초마다 재생성하여 관리자 CMS 편집(배너·공지)을 반영
 export const revalidate = 60;

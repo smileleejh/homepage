@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import { getContent } from "@/lib/content";
 
-export const metadata: Metadata = { title: "회사소개" };
+export const metadata: Metadata = {
+  title: "회사소개",
+  description: "인사말·비전·연혁을 통해 우리 회사가 걸어온 길과 만들어 갈 가치를 소개합니다.",
+  alternates: { canonical: "/about" },
+  openGraph: { title: "회사소개", url: "/about" },
+};
 
 // ISR: 60초마다 재생성하여 관리자 CMS 편집(인사말)을 반영
 export const revalidate = 60;

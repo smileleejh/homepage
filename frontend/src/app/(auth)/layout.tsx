@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+// 로그인·가입·인증 화면은 공개 접근이 가능하지만 검색 색인 대상이 아니다.
+// robots.ts의 Disallow와 별개로, 페이지 자체에도 noindex를 걸어 색인을 막는다.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 // 인증 영역 공통 셸 (가운데 정렬 카드 + 은은한 배경)
 export default function AuthLayout({

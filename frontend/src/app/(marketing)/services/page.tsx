@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "사업분야" };
+export const metadata: Metadata = {
+  title: "사업분야",
+  description: "컨설팅·솔루션 개발·운영 지원까지, 비즈니스 목표에 맞춘 서비스를 제공합니다.",
+  alternates: { canonical: "/services" },
+  openGraph: { title: "사업분야", url: "/services" },
+};
 
 // P-03 사업분야/서비스
 export default function ServicesPage() {

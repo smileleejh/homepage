@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "오시는 길" };
+export const metadata: Metadata = {
+  title: "오시는 길",
+  description: "회사 위치와 연락처를 안내합니다. 주소·전화·이메일로 문의해 주세요.",
+  alternates: { canonical: "/location" },
+  openGraph: { title: "오시는 길", url: "/location" },
+};
 
 // P-04 오시는 길
 export default function LocationPage() {

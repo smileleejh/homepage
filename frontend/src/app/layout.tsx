@@ -1,12 +1,29 @@
 import type { Metadata } from "next";
+import { SITE_BRAND, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  // 상대경로 OG/canonical을 절대주소로 합성하는 기준. 미설정 시 빌드 경고가 난다.
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "회사 홈페이지",
-    template: "%s | 회사 홈페이지",
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
   },
-  description: "회사 소개 · 문의 접수 · 직원 전용 사내 게시판",
+  description: SITE_DESCRIPTION,
+  // 공개 페이지는 색인 허용. 보호 영역은 (auth) 레이아웃·robots.ts에서 별도로 막는다.
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    siteName: SITE_BRAND,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({

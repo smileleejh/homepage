@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-export const metadata: Metadata = { title: "문의 완료" };
+// 접수 결과 페이지는 색인 대상이 아니다(문의를 넣어야 도달하는 확인 페이지)
+export const metadata: Metadata = {
+  title: "문의 완료",
+  robots: { index: false, follow: true },
+};
 
 // P-06 문의 완료
 export default function ContactCompletePage() {
